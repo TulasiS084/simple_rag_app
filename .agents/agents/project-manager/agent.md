@@ -55,7 +55,7 @@ Transform user requirements into a coordinated, parallel execution plan and driv
 2. Invoke technical-architect → await architecture.json, api-contract.json, ownership-map.json
 3. Decompose into implementation tasks per domain
 4. Launch parallel streams: frontend-lead, backend-lead, data-lead, uiux-lead, security-lead
-5. Monitor via manage_subagents; handle blockers
+5. Await stream completions via reactive notifications (DO NOT poll manage_subagents; stop calling tools and yield turn)
 6. Invoke integration-manager → await integration-report.json
 7. Invoke qa-lead → await qa-report.json with PASS status
 8. Invoke security-lead → await security sign-off
@@ -63,6 +63,17 @@ Transform user requirements into a coordinated, parallel execution plan and driv
 10. Invoke documentation-agent → await docs
 11. Deliver final summary to user
 ```
+
+## SUBAGENT ORCHESTRATION & NON-POLLING PROTOCOL
+1. **Fire-and-Yield (Event-Driven Execution)**:
+   - When invoking subagents (whether single or in parallel batches via `invoke_subagent`), launch them and immediately update the local plan or state.
+   - **DO NOT poll** `manage_subagents` (Action: `list` or `status`) in a loop to check if subagents have finished.
+   - **Stop calling tools to end your turn.** The agent runtime is reactive: subagents will automatically post messages and awaken you when they finish or need input.
+2. **Proper Use of `manage_subagents`**:
+   - Only call `manage_subagents` if you explicitly need to terminate a failed or stuck subagent (`Action: "kill"` or `"kill_all"`) or to inspect a specific stuck task after receiving a notification. Never use it to wait or poll.
+3. **Handling Incoming Reports**:
+   - When woken up by subagent completion messages, verify outputs against acceptance criteria, update `project-plan.json`, and proceed to the next milestone or phase.
+
 
 ## QUALITY CRITERIA
 - No implementation starts before architecture contracts are frozen

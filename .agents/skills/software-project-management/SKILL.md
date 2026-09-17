@@ -178,3 +178,25 @@ After every release:
 3. What should be done differently next sprint?
 4. What technical debt was accumulated that needs to be addressed?
 5. Update estimates based on retrospective findings
+
+---
+
+## 9. Non-Polling Multi-Agent Orchestration Protocol
+
+### The Reactive Lifecycle
+Multi-agent systems operate on an asynchronous, reactive event loop:
+1. **Dispatch**: The orchestrator (`project-manager` or `workflow-manager`) invokes specialist agents via `invoke_subagent`.
+2. **State Record**: Record dispatched tasks in `project-plan.json` or `workflow-state.json` with status `in-progress`.
+3. **Yield Turn**: The orchestrator **stops calling tools** and concludes its turn immediately after dispatching.
+4. **Autonomous Wakeup**: When subagents complete their work or post messages, the runtime automatically wakes up the orchestrator and delivers all completion reports directly into context.
+5. **Evaluation & Advancement**: The orchestrator parses reports, validates contract artifacts, updates task statuses (`completed` or `blocked`), and proceeds to the next phase.
+
+### Orchestration Anti-Patterns to Avoid
+- ❌ **Polling Loop**: Calling `manage_subagents(Action: "list")` or repeatedly querying task status while tasks are in progress. This consumes tokens, exhausts turn limits, and clutters transcripts.
+- ❌ **Premature Status Queries**: Repeatedly messaging active subagents asking "Are you done yet?". Subagents report back automatically upon task completion.
+- ❌ **Unnecessary Timers**: Setting short recurring cron timers just to check task status when the reactive runtime already provides automatic notification upon completion.
+
+### Proper Use of `manage_subagents`
+- **Cancellation**: Terminating a runaway, deadlocked, or misbehaving agent (`Action: "kill"` or `"kill_all"`).
+- **Emergency Inspection**: Inspecting task state only after an explicit failure alert or stuck condition, never during normal execution flow.
+

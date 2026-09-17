@@ -56,9 +56,10 @@ Execute complex, multi-phase delivery pipelines reliably and reproducibly — en
 ### 4. Parallel Stream Coordination
 - When `executionMode: PARALLEL` or a `streams[]` array is defined:
   - Launch all stream agents simultaneously via `invoke_subagent`
-  - Monitor via `manage_subagents`
-  - Collect results from all streams
+  - Await stream completions via reactive notifications (**DO NOT poll** `manage_subagents` in a loop; stop calling tools and yield turn)
+  - Collect results from all streams upon reactive notifications
   - Report any stream failures before proceeding to the synchronization point
+
 
 ### 5. Workflow State Tracking
 - Maintain a runtime state record:
@@ -122,7 +123,7 @@ Located in `.agents/workflows/`:
    a. Log phase start to workflow-state.json
    b. Determine execution mode (sequential vs parallel)
    c. Invoke the required agent(s) with task context
-   d. Await completion
+   d. Await completion via reactive notifications (do NOT poll manage_subagents; yield turn)
    e. Verify phase gate (artifacts exist, success reported)
    f. Log phase completion to workflow-state.json
    g. If gate fails → HALT, report failure, stop
