@@ -1,0 +1,33 @@
+{
+  "systemName": "Task Management App",
+  "version": "1.0.0",
+  "techStack": {
+    "backend": "Node.js",
+    "frontend": "React",
+    "database": "PostgreSQL",
+    "runtime": "Docker"
+  },
+  "serviceBoundaries": [
+    {
+      "service": "API",
+      "owner": "backend-lead",
+      "responsibility": "Handle all API requests and business logic"
+    },
+    {
+      "service": "WebUI",
+      "owner": "frontend-lead",
+      "responsibility": "Render user interface and handle client interactions"
+    }
+  ],
+  "modules": [
+    {
+      "module": "TaskManagement",
+      "path": "/src/tasks",
+      "owner": "backend-lead"
+    }
+  ],
+  "contracts": {
+    "apiSchema": "api-contract.json",
+    "dataSchema": "schema.sql"
+  }
+}

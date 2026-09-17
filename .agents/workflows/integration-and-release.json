@@ -1,0 +1,39 @@
+{
+  "workflowId": "integration-and-release",
+  "name": "Integration and Release Workflow",
+  "description": "Standard operating procedure for merging parallel code streams, resolving conflicts, validating builds, running comprehensive test suites, and signing off on release.",
+  "steps": [
+    {
+      "step": 1,
+      "name": "Source Tree Harmonization",
+      "owner": "integration-manager",
+      "action": "Inspect branches/changes, check ownership adherence, detect file clashes"
+    },
+    {
+      "step": 2,
+      "name": "Integration Build & Unit Tests",
+      "owner": "integration-manager",
+      "action": "Execute build scripts and run core unit tests"
+    },
+    {
+      "step": 3,
+      "name": "E2E and Regression Suite",
+      "owner": "qa-lead",
+      "delegates": ["browser-e2e-tester"],
+      "action": "Run full regression and browser end-to-end tests"
+    },
+    {
+      "step": 4,
+      "name": "Security & Architecture Review",
+      "owner": "security-lead",
+      "collaborators": ["code-reviewer", "technical-architect"],
+      "action": "Audit codebase for vulnerabilities, secrets, and architecture compliance"
+    },
+    {
+      "step": 5,
+      "name": "Release Packaging & Deployment",
+      "owner": "devops-release-lead",
+      "artifacts": ["release-report.json", "CHANGELOG.md"]
+    }
+  ]
+}

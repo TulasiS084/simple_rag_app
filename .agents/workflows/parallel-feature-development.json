@@ -1,0 +1,40 @@
+{
+  "workflowId": "parallel-feature-development",
+  "name": "Parallel Feature Development Workflow",
+  "description": "Guides parallel execution across backend, frontend, database, and security streams based on defined contracts and ownership boundaries.",
+  "prerequisites": [
+    "architecture.json",
+    "api-contract.json",
+    "ownership-map.json"
+  ],
+  "streams": [
+    {
+      "stream": "backend",
+      "owner": "backend-lead",
+      "scope": ["backend/", "server/"],
+      "contract": "api-contract.json"
+    },
+    {
+      "stream": "frontend",
+      "owner": "frontend-lead",
+      "scope": ["frontend/", "src/", "public/"],
+      "contract": "api-contract.json"
+    },
+    {
+      "stream": "database",
+      "owner": "data-lead",
+      "scope": ["database/", "migrations/", "models/"],
+      "contract": "architecture.json"
+    },
+    {
+      "stream": "security",
+      "owner": "security-lead",
+      "scope": ["security/", "auth/"],
+      "contract": "architecture.json"
+    }
+  ],
+  "synchronizationPoint": {
+    "coordinator": "integration-manager",
+    "action": "merge and run automated test suite"
+  }
+}

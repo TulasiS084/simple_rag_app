@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "checkedStreams": [
+    "backend",
+    "frontend"
+  ],
+  "ownershipViolations": [],
+  "testResults": {
+    "exitCode": 0,
+    "logSummary": "Test 1 passed: GET /api/tasks returns empty array\nTest 2 passed: POST /api/tasks creates task\nTest 3 passed: GET /api/tasks returns 1 item\nAll tests passed!"
+  }
+}

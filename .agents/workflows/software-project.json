@@ -1,0 +1,50 @@
+{
+  "workflowId": "software-project",
+  "name": "Full Lifecycle Software Project Workflow",
+  "description": "Orchestrates an end-to-end software engineering cycle from requirements to architecture, parallel development, integration, QA, and release.",
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Discovery & Planning",
+      "leadAgent": "project-manager",
+      "artifacts": ["project-plan.json", "milestones.json"]
+    },
+    {
+      "phase": 2,
+      "name": "Architecture & Contracts",
+      "leadAgent": "technical-architect",
+      "artifacts": ["architecture.json", "api-contract.json", "ownership-map.json"]
+    },
+    {
+      "phase": 3,
+      "name": "Parallel Implementation",
+      "agents": [
+        "backend-lead",
+        "frontend-lead",
+        "data-lead",
+        "security-lead",
+        "uiux-lead"
+      ],
+      "executionMode": "PARALLEL",
+      "artifacts": ["backend/", "frontend/", "database/"]
+    },
+    {
+      "phase": 4,
+      "name": "Integration & Conflict Resolution",
+      "leadAgent": "integration-manager",
+      "artifacts": ["integration-report.json"]
+    },
+    {
+      "phase": 5,
+      "name": "Verification & Code Review",
+      "agents": ["code-reviewer", "qa-lead", "browser-e2e-tester", "security-lead"],
+      "artifacts": ["qa-report.json", "code-review.json"]
+    },
+    {
+      "phase": 6,
+      "name": "Documentation & Release",
+      "agents": ["documentation-agent", "devops-release-lead"],
+      "artifacts": ["README.md", "release-report.json"]
+    }
+  ]
+}

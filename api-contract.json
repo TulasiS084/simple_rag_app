@@ -1,0 +1,32 @@
+{
+  "apiName": "Task API",
+  "version": "1.0.0",
+  "endpoints": [
+    {
+      "path": "/tasks",
+      "method": "GET",
+      "description": "Retrieve all tasks",
+      "request": {},
+      "response": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "path": "/tasks",
+      "method": "POST",
+      "description": "Create a new task",
+      "request": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" }
+        }
+      },
+      "response": {
+        "type": "object"
+      }
+    }
+  ]
+}
