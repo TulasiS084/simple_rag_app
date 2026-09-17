@@ -252,3 +252,197 @@ Before handing off to `ui-component-worker` or `frontend-lead`:
 - [ ] Font sizes use the token scale (no arbitrary sizes)
 - [ ] Spacing uses the 8-point grid (no arbitrary spacing)
 - [ ] Component spec includes: purpose, anatomy, states, do's and don'ts
+
+---
+
+## 13. CSS Framework Selection Guide
+
+Choose the right CSS approach before starting implementation. Align with `frontend-lead` on the decision.
+
+---
+
+### Option A — Tailwind CSS *(recommended for most new projects)*
+
+**Best for:** Custom designs, full control over every pixel, no design system overhead.
+
+```html
+<!-- Tailwind: utility classes directly in JSX -->
+<button class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700
+               text-white text-sm font-semibold rounded-lg transition-colors
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500
+               disabled:opacity-50 disabled:cursor-not-allowed">
+  Save changes
+</button>
+```
+
+**Tailwind configuration for design tokens:**
+```js
+// tailwind.config.ts
+export default {
+  content: ['./src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        brand: {
+          50:  '#eef2ff',
+          500: '#4f46e5',   // primary
+          600: '#4338ca',   // primary hover
+          700: '#3730a3',
+        },
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        DEFAULT: '10px',
+        sm: '6px',
+        lg: '16px',
+      },
+    },
+  },
+};
+```
+
+**Pros:** No unused CSS (purged), consistent spacing scale (4/8/12/16...), dark mode built-in (`dark:` prefix), excellent docs.
+**Cons:** Long class strings, requires discipline to avoid duplication (use `@apply` for repeated patterns).
+
+**When NOT to use:** When the team is new to utility-first and there's no time to learn. When designs are already component-library-based.
+
+---
+
+### Option B — Tailwind + shadcn/ui *(recommended for apps that need pre-built components fast)*
+
+**Best for:** Admin dashboards, SaaS apps, forms-heavy UIs — anywhere you need high-quality accessible components without building from scratch.
+
+```bash
+# Install
+npx shadcn-ui@latest init
+npx shadcn-ui@latest add button input dialog table
+```
+
+```tsx
+// Usage — components are copied into your repo (you own them)
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+<Dialog open={open} onOpenChange={setOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Create task</DialogTitle>
+    </DialogHeader>
+    <Input placeholder="Task title" />
+    <Button>Save</Button>
+  </DialogContent>
+</Dialog>
+```
+
+**Pros:** Radix UI primitives underneath (fully accessible), Tailwind-based so fully customizable, components live in your codebase (not a black-box dependency), TypeScript-first.
+**Cons:** Requires Tailwind. Initial setup takes time.
+
+---
+
+### Option C — CSS Modules *(recommended for teams preferring scoped CSS)*
+
+**Best for:** Teams who prefer writing real CSS, avoid className conflicts, strong CSS skills.
+
+```tsx
+// Button.module.css
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-accent);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  transition: background 150ms ease;
+}
+.button:hover { background: var(--color-accent-hover); }
+.button.secondary { background: var(--color-surface); color: var(--color-text-primary); }
+```
+
+```tsx
+// Button.tsx
+import styles from './Button.module.css';
+import { clsx } from 'clsx';
+
+export function Button({ variant = 'primary', className, ...props }) {
+  return (
+    <button
+      className={clsx(styles.button, variant === 'secondary' && styles.secondary, className)}
+      {...props}
+    />
+  );
+}
+```
+
+**Pros:** Real CSS (full power), zero runtime cost, scoped by default, works with CSS custom properties (design tokens), familiar for CSS experts.
+**Cons:** More verbose for simple cases, no utility classes, design token changes require updating CSS files.
+
+---
+
+### Option D — Styled Components / Emotion *(CSS-in-JS)*
+
+**Best for:** Dynamic styles based on props, teams already using it, design systems that need JavaScript logic in styles.
+
+```tsx
+import styled from 'styled-components';
+
+const Button = styled.button<{ $variant?: 'primary' | 'secondary' }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  background: ${({ $variant }) => $variant === 'secondary' ? 'transparent' : 'var(--color-accent)'};
+  color: ${({ $variant }) => $variant === 'secondary' ? 'var(--color-text-primary)' : 'white'};
+  border: 1.5px solid ${({ $variant }) => $variant === 'secondary' ? 'var(--color-border)' : 'transparent'};
+  transition: all 150ms ease;
+
+  &:hover {
+    background: ${({ $variant }) => $variant === 'secondary' ? 'var(--color-surface-hover)' : 'var(--color-accent-hover)'};
+  }
+`;
+```
+
+**Pros:** Props-driven dynamic styles, colocation of styles and component, TypeScript-typed props.
+**Cons:** Runtime cost (styles injected at runtime), harder SSR, larger bundle, server components incompatible.
+**Avoid for:** Next.js App Router (server components can't use CSS-in-JS with runtime).
+
+---
+
+### Option E — DaisyUI (Tailwind component classes)
+
+**Best for:** Rapid prototyping, simple projects, teams new to Tailwind who want pre-built class compositions.
+
+```html
+<!-- No JS required — pure CSS classes -->
+<button class="btn btn-primary">Primary</button>
+<input class="input input-bordered w-full" placeholder="Email" />
+<div class="card bg-base-100 shadow-md">
+  <div class="card-body">
+    <h2 class="card-title">Title</h2>
+  </div>
+</div>
+```
+
+**Pros:** Zero JavaScript, theme system with 30+ built-in themes (`data-theme="dark"`), very fast to prototype with.
+**Cons:** Less customizable than raw Tailwind, opinionated component styles, not suitable for unique brand designs.
+
+---
+
+### Framework Decision Matrix
+
+| Need | Best Choice |
+|---|---|
+| Custom unique design, full control | Tailwind CSS |
+| Custom design + accessible components fast | Tailwind + shadcn/ui |
+| Strong CSS skills, scoped styles | CSS Modules + CSS Variables |
+| Props-driven dynamic styles | Styled Components / Emotion |
+| Rapid prototype or simple app | DaisyUI |
+| Next.js App Router (server components) | Tailwind or CSS Modules (no runtime CSS-in-JS) |
+| Design system shared across multiple apps | CSS Modules with a package, or Tailwind preset |
+
+**When specifying the framework choice, always document it in `design-spec.md` so `frontend-lead` and `ui-component-worker` know which approach to use.**
