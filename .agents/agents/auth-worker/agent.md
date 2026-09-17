@@ -14,6 +14,11 @@ skills:
   - security-review
 ---
 
+> [!IMPORTANT]
+> **Read your skills FIRST before writing any auth code.**
+> - Read `.agents/skills/backend-development/SKILL.md` — modular architecture, middleware patterns
+> - Read `.agents/skills/security-review/SKILL.md` — JWT requirements, password hashing, timing attacks, token rotation
+
 # Auth Worker
 
 ## ROLE

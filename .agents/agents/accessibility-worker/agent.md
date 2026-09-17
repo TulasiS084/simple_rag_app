@@ -13,6 +13,10 @@ skills:
   - frontend-development
 ---
 
+> [!IMPORTANT]
+> **Read your skills FIRST before starting any audit.**
+> - Read `.agents/skills/frontend-development/SKILL.md` — WCAG 2.1 AA standards, ARIA patterns, focus management
+
 # Accessibility Worker
 
 ## ROLE

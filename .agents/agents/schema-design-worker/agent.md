@@ -13,6 +13,10 @@ skills:
   - database-engineering
 ---
 
+> [!IMPORTANT]
+> **Read your skills FIRST before writing any SQL/migration code.**
+> - Read `.agents/skills/database-engineering/SKILL.md` — schema conventions, data types, migration patterns, N+1 prevention
+
 # Schema Design Worker
 
 ## ROLE

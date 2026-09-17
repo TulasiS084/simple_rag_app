@@ -13,6 +13,11 @@ skills:
   - git-integration
 ---
 
+> [!IMPORTANT]
+> **Read your skills FIRST.**
+> - Read `.agents/skills/devops-practices/SKILL.md` — GitHub Actions patterns, caching, parallel jobs, secrets management
+> - Read `.agents/skills/git-integration/SKILL.md` — conventional commits, branching, semantic versioning
+
 # CI Pipeline Worker
 
 ## ROLE

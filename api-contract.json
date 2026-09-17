@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/register",
+      "request": { "body": { "name": "string", "email": "string", "password": "string" } },
+      "response": { "201": { "message": "string" } }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "request": { "body": { "email": "string", "password": "string" } },
+      "response": { "200": { "token": "string" } }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/todos",
+      "auth": true,
+      "response": { "200": [{ "_id": "string", "title": "string", "priority": "string", "completed": "boolean" }] }
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/todos",
+      "auth": true,
+      "request": { "body": { "title": "string", "priority": "string" } },
+      "response": { "201": { "_id": "string", "title": "string", "priority": "string", "completed": "boolean" } }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/todos/:id",
+      "auth": true,
+      "request": { "body": { "title": "string", "completed": "boolean" } },
+      "response": { "200": { "_id": "string", "title": "string", "priority": "string", "completed": "boolean" } }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/todos/:id",
+      "auth": true,
+      "response": { "200": { "message": "string" } }
+    }
+  ]
+}

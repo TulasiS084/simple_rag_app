@@ -13,6 +13,11 @@ skills:
   - frontend-development
 ---
 
+> [!IMPORTANT]
+> **Read your skills FIRST before writing any code.**
+> - Read `.agents/skills/frontend-development/SKILL.md` — component patterns, TypeScript, React Query, WCAG
+> - Read `.agents/skills/react-patterns/SKILL.md` — hooks, compound components, memoization, portals
+
 # API Integration Worker
 
 ## ROLE

@@ -15,6 +15,11 @@ skills:
   - testing
 ---
 
+> [!IMPORTANT]
+> **Read your skills FIRST before writing any tests.**
+> - Read `.agents/skills/backend-development/SKILL.md` — service patterns to understand what to test
+> - Read `.agents/skills/testing/SKILL.md` — Supertest patterns, integration test DB management, coverage targets
+
 # Backend Test Worker
 
 ## ROLE

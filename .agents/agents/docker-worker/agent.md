@@ -12,6 +12,10 @@ skills:
   - git-integration
 ---
 
+> [!IMPORTANT]
+> **Read your skills FIRST.**
+> - Read `.agents/skills/devops-practices/SKILL.md` — multi-stage Dockerfile patterns, non-root user, health checks, .dockerignore
+
 # Docker Worker
 
 ## ROLE

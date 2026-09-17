@@ -13,6 +13,10 @@ skills:
   - testing
 ---
 
+> [!IMPORTANT]
+> **Read your skills FIRST before writing any tests.**
+> - Read `.agents/skills/testing/SKILL.md` — test pyramid, AAA pattern, coverage targets, Playwright/RTL/Supertest patterns
+
 # Regression Test Worker
 
 ## ROLE

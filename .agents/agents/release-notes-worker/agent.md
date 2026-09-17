@@ -13,6 +13,10 @@ skills:
   - git-integration
 ---
 
+> [!IMPORTANT]
+> **Read your skills FIRST.**
+> - Read `.agents/skills/git-integration/SKILL.md` — conventional commits categorization, semantic versioning, Keep a Changelog format
+
 # Release Notes Worker
 
 ## ROLE

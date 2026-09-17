@@ -1,0 +1,17 @@
+{
+  "name": "MERN Todo App",
+  "techStack": {
+    "backend": ["Node.js 20", "Express 4", "MongoDB 7", "Mongoose"],
+    "frontend": ["React 18", "TypeScript", "Vite", "React Router", "Axios"],
+    "infrastructure": ["Docker", "Docker Compose"]
+  },
+  "auth": {
+    "type": "JWT",
+    "algorithm": "HS256",
+    "expiration": "15m"
+  },
+  "directories": {
+    "backend": "cook/backend",
+    "frontend": "cook/frontend"
+  }
+}
