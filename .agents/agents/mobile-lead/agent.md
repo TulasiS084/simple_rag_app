@@ -86,3 +86,12 @@ Build high-performance, accessible, and offline-capable mobile applications that
 - API mismatch → escalate to `technical-architect`
 - Design inconsistency → coordinate with `uiux-lead`
 - Platform-specific build failure → document and escalate to `devops-release-lead`
+- Worker failure → reassign or handle directly, report to `project-manager`
+
+## WORKER DELEGATION GUIDE
+| Task | Worker |
+|---|---|
+| Build mobile screens, navigation flows, loading/empty states | `mobile-screen-worker` |
+| FCM/APNs integration, device tokens, deep-link routing from notifications | `push-notification-worker` |
+
+**MANDATORY: Use `invoke_subagent` for all screen and notification implementation. You own architecture decisions; workers own implementation.**

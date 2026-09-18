@@ -1,8 +1,8 @@
 {
   "companyName": "Software Engineering Company",
-  "version": "2.0.0",
-  "lastUpdated": "2026-09-17",
-  "totalAgents": 36,
+  "version": "2.3.0",
+  "lastUpdated": "2026-09-18",
+  "totalAgents": 43,
   "agents": [
     {
       "name": "project-manager",
@@ -50,12 +50,27 @@
       "type": "lead",
       "scope": "workspace",
       "location": ".agents/agents/uiux-lead/agent.md",
-      "capabilities": ["user-journey-mapping", "design-system", "component-specs", "accessibility-standards"],
+      "capabilities": ["user-journey-mapping", "design-system", "component-specs", "accessibility-standards", "design-handoff"],
       "model": "pro",
       "mainAgent": true,
       "subagent": true,
+      "can_delegate": true,
+      "skills": ["uiux-design", "frontend-development"],
+      "workers": ["mockup-wireframe-worker"]
+    },
+    {
+      "name": "mockup-wireframe-worker",
+      "role": "Mockup & Wireframe Worker",
+      "type": "worker",
+      "scope": "workspace",
+      "location": ".agents/agents/mockup-wireframe-worker/agent.md",
+      "capabilities": ["wireframe-generation", "ui-inspiration-research", "mockup-generation", "screen-specs", "design-pattern-research"],
+      "model": "pro",
+      "mainAgent": false,
+      "subagent": true,
       "can_delegate": false,
-      "skills": ["frontend-development"]
+      "skills": ["uiux-design"],
+      "parent": "uiux-lead"
     },
     {
       "name": "frontend-lead",
@@ -63,13 +78,13 @@
       "type": "lead",
       "scope": "workspace",
       "location": ".agents/agents/frontend-lead/agent.md",
-      "capabilities": ["component-architecture", "state-management", "routing", "api-integration", "frontend-testing"],
+      "capabilities": ["component-architecture", "state-management", "routing", "api-integration", "frontend-testing", "performance-budgets", "i18n-strategy"],
       "model": "pro",
       "mainAgent": true,
       "subagent": true,
       "can_delegate": true,
       "skills": ["frontend-development", "testing"],
-      "workers": ["ui-component-worker", "routing-worker", "state-management-worker", "api-integration-worker", "frontend-test-worker", "accessibility-worker"]
+      "workers": ["ui-component-worker", "routing-worker", "state-management-worker", "api-integration-worker", "frontend-test-worker", "accessibility-worker", "performance-worker", "localization-worker"]
     },
     {
       "name": "ui-component-worker",
@@ -161,13 +176,13 @@
       "type": "lead",
       "scope": "workspace",
       "location": ".agents/agents/backend-lead/agent.md",
-      "capabilities": ["api-implementation", "auth-design", "business-logic", "backend-testing", "error-handling"],
+      "capabilities": ["api-implementation", "auth-design", "business-logic", "backend-testing", "error-handling", "analytics"],
       "model": "pro",
       "mainAgent": true,
       "subagent": true,
       "can_delegate": true,
       "skills": ["backend-development", "testing"],
-      "workers": ["api-route-worker", "auth-worker", "business-logic-worker", "data-access-worker", "backend-test-worker", "error-handling-worker"]
+      "workers": ["api-route-worker", "auth-worker", "business-logic-worker", "data-access-worker", "backend-test-worker", "error-handling-worker", "analytics-worker"]
     },
     {
       "name": "api-route-worker",
@@ -429,8 +444,8 @@
       "mainAgent": true,
       "subagent": true,
       "can_delegate": true,
-      "skills": ["git-integration", "testing"],
-      "workers": ["ci-pipeline-worker", "docker-worker", "release-notes-worker"]
+      "skills": ["git-integration", "devops-practices", "testing"],
+      "workers": ["ci-pipeline-worker", "docker-worker", "release-notes-worker", "observability-worker"]
     },
     {
       "name": "ci-pipeline-worker",
@@ -485,7 +500,94 @@
       "mainAgent": true,
       "subagent": true,
       "can_delegate": true,
-      "skills": ["frontend-development", "testing"]
+      "skills": ["flutter-development", "frontend-development", "testing"],
+      "workers": ["mobile-screen-worker", "push-notification-worker"]
+    },
+    {
+      "name": "mobile-screen-worker",
+      "role": "Mobile Screen Worker",
+      "type": "worker",
+      "scope": "workspace",
+      "location": ".agents/agents/mobile-screen-worker/agent.md",
+      "capabilities": ["screen-implementation", "navigation-wiring", "loading-skeletons", "empty-states", "platform-conventions"],
+      "model": "flash",
+      "mainAgent": false,
+      "subagent": true,
+      "can_delegate": false,
+      "skills": ["flutter-development", "frontend-development"],
+      "parent": "mobile-lead"
+    },
+    {
+      "name": "push-notification-worker",
+      "role": "Push Notification Worker",
+      "type": "worker",
+      "scope": "workspace",
+      "location": ".agents/agents/push-notification-worker/agent.md",
+      "capabilities": ["fcm-apns-setup", "device-token-management", "deep-link-routing", "in-app-banner", "notification-channels"],
+      "model": "flash",
+      "mainAgent": false,
+      "subagent": true,
+      "can_delegate": false,
+      "skills": ["mobile-notifications", "flutter-development", "backend-development"],
+      "parent": "mobile-lead"
+    },
+    {
+      "name": "performance-worker",
+      "role": "Performance Worker",
+      "type": "worker",
+      "scope": "workspace",
+      "location": ".agents/agents/performance-worker/agent.md",
+      "capabilities": ["lighthouse-audit", "core-web-vitals", "bundle-analysis", "code-splitting", "image-optimization", "virtualization"],
+      "model": "flash",
+      "mainAgent": false,
+      "subagent": true,
+      "can_delegate": false,
+      "skills": ["performance-optimization", "frontend-development", "react-patterns"],
+      "parent": "frontend-lead"
+    },
+    {
+      "name": "localization-worker",
+      "role": "Localization Worker",
+      "type": "worker",
+      "scope": "workspace",
+      "location": ".agents/agents/localization-worker/agent.md",
+      "capabilities": ["i18n-setup", "string-extraction", "rtl-support", "locale-formatting", "plural-rules", "locale-switcher"],
+      "model": "flash",
+      "mainAgent": false,
+      "subagent": true,
+      "can_delegate": false,
+      "skills": ["localization", "frontend-development", "flutter-development"],
+      "parent": "frontend-lead"
+    },
+    {
+      "name": "analytics-worker",
+      "role": "Analytics Worker",
+      "type": "worker",
+      "scope": "workspace",
+      "location": ".agents/agents/analytics-worker/agent.md",
+      "capabilities": ["event-taxonomy", "sdk-integration", "tracking-plan", "funnel-definitions", "pii-scrubbing", "server-side-tracking"],
+      "model": "flash",
+      "mainAgent": false,
+      "subagent": true,
+      "can_delegate": false,
+      "skills": ["analytics-tracking", "backend-development", "frontend-development"],
+      "parent": "backend-lead"
+    },
+    {
+      "name": "observability-worker",
+      "role": "Observability Worker",
+      "type": "worker",
+      "scope": "workspace",
+      "location": ".agents/agents/observability-worker/agent.md",
+      "capabilities": ["sentry-integration", "structured-logging", "health-endpoints", "metrics", "alerting", "runbook"],
+      "model": "flash",
+      "mainAgent": false,
+      "subagent": true,
+      "can_delegate": false,
+      "blocking": true,
+      "blockingNote": "devops-release-lead MUST wait for observability-report.json PASS before releasing",
+      "skills": ["observability", "backend-development", "devops-practices"],
+      "parent": "devops-release-lead"
     },
     {
       "name": "documentation-agent",

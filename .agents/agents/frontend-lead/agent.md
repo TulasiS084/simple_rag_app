@@ -109,3 +109,5 @@ Build accessible, performant, and intuitive web interfaces that strictly consume
 | Write component unit tests and hook tests | `frontend-test-worker` |
 | Audit and fix WCAG 2.1 AA accessibility issues | `accessibility-worker` |
 | Run full browser user-journey tests | `browser-e2e-tester` (via qa-lead) |
+| Lighthouse audits, bundle analysis, Core Web Vitals optimization | `performance-worker` |
+| i18n setup, string extraction, RTL support, locale formatting | `localization-worker` |

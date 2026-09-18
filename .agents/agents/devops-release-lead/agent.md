@@ -90,8 +90,37 @@ Build automated, repeatable, and observable deployment workflows that ship QA-si
 - Docker build failure → fix or escalate to backend-lead for dependency issues
 
 ## WORKER DELEGATION GUIDE
-| Task | Worker |
-|---|---|
-| Write GitHub Actions / CI pipeline workflows | `ci-pipeline-worker` |
-| Write Dockerfiles and docker-compose configs | `docker-worker` |
-| Collate git changelog and write release notes | `release-notes-worker` |
+| Task | Worker | Mode |
+|---|---|---|
+| Write GitHub Actions / CI pipeline workflows | `ci-pipeline-worker` | Parallel |
+| Write Dockerfiles and docker-compose configs | `docker-worker` | Parallel |
+| Collate git changelog and write release notes | `release-notes-worker` | Parallel |
+| Error tracking, structured logs, health checks, metrics, alerting | `observability-worker` | **BLOCKING — must wait for return** |
+
+## BLOCKING INVOCATION — OBSERVABILITY WORKER
+
+> [!IMPORTANT]
+> **You MUST invoke `observability-worker` and WAIT for it to complete before tagging any release.**
+>
+> **Invocation pattern:**
+> ```
+> invoke_subagent observability-worker
+>   → do NOT proceed until you receive observability-report.json back
+>   → check: observability-report.json status === "PASS"
+>   → if status === "FAIL" → block the release, fix issues, re-invoke
+>   → only after status === "PASS" → continue with release tagging
+> ```
+>
+> **Why blocking?** Deploying without observability means you are flying blind in production — errors go undetected, on-call engineers have no signals, and incidents take hours to diagnose. This is non-negotiable.
+
+## RELEASE GATE CHECKLIST (in order)
+```
+1. ✅ qa-report.json status === "PASS" (from qa-lead)
+2. ✅ Security sign-off received (from security-lead)
+3. ✅ observability-report.json status === "PASS" ← invoke observability-worker, WAIT for return
+4. ✅ All worker tasks complete (CI, Docker, release notes)
+5. ✅ Apply semantic version bump
+6. ✅ Tag git commit
+7. ✅ Write release-report.json
+8. ✅ Report to project-manager
+```

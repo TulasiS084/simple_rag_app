@@ -108,3 +108,4 @@ Build reliable, secure, and high-performance backend services that strictly impl
 | ORM models, repositories, query optimization | `data-access-worker` |
 | Unit tests, integration tests, contract tests | `backend-test-worker` |
 | Standardize error codes and exception handlers | `error-handling-worker` |
+| Event taxonomy, SDK integration, tracking plan, funnel definitions | `analytics-worker` |
