@@ -877,5 +877,5 @@ MIT — free to use, modify, and build on.
 
 ---
 
-*Built with [Antigravity (AGY)](https://antigravity.dev) — the multi-agent AI coding platform.*
 *Registry: v2.3.0 · 43 agents · 20 skills · 3 workflows*
+
