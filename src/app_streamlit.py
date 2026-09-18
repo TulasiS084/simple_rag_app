@@ -17,15 +17,15 @@ try:
     from src.rag_pipeline.pipeline import RAGPipeline
     from src.rag_pipeline.config import RAGConfig
     from src.create_sample_pdf import generate_sample_pdf
-    from src.rag_pipeline.voice import text_to_speech_base64, clean_text_for_speech
+    from src.rag_pipeline.voice import generate_speech_audio, clean_text_for_speech
 except ImportError:
     from rag_pipeline.pipeline import RAGPipeline
     from rag_pipeline.config import RAGConfig
     from create_sample_pdf import generate_sample_pdf
-    from rag_pipeline.voice import text_to_speech_base64, clean_text_for_speech
+    from rag_pipeline.voice import generate_speech_audio, clean_text_for_speech
 
 # -----------------------------------------------------------------------------
-# Streamlit Page Configuration & Modern Styling
+# Streamlit Page Configuration & Styling
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="RAG AI Voice & Chatbot Assistant",
@@ -34,14 +34,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for ChatGPT-like action bar and voice elements
+# Custom CSS for ChatGPT-style UI
 st.markdown("""
 <style>
-    /* Metric Cards */
+    /* Metric Card Styling */
     .metric-card {
         background: linear-gradient(135deg, #1E222A 0%, #282C34 100%);
         border: 1px solid #3E4451;
-        border-radius: 12px;
+        border-radius: 10px;
         padding: 12px 18px;
         margin-bottom: 12px;
         color: #ECEFF4;
@@ -76,120 +76,24 @@ st.markdown("""
         color: #E5C07B;
         margin-bottom: 4px;
     }
-    /* Action toolbar buttons below assistant message (ChatGPT style) */
-    .chat-action-btn {
-        background: transparent;
-        border: none;
-        color: #8A919E;
-        font-size: 16px;
-        cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 6px;
+    /* Button Polish */
+    div.stButton > button {
+        border-radius: 18px;
         transition: all 0.2s ease;
+        font-weight: 500;
     }
-    .chat-action-btn:hover {
-        background: #2C313A;
-        color: #61AFEF;
+    div.stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 6px rgba(97, 175, 239, 0.25);
     }
-    /* Input Container Styling */
+    /* Native Chat Input */
     div[data-testid="stChatInput"] {
         border-radius: 24px;
         border: 1px solid #4B5263;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
 </style>
 """, unsafe_allow_html=True)
-
-# -----------------------------------------------------------------------------
-# Global JavaScript Engine for Loud Voice Synthesis & Real-Time Voice Input
-# -----------------------------------------------------------------------------
-# We inject this into the top-level window so that speech synthesis runs in the main parent context
-components.html("""
-<script>
-(function() {
-    // Top level window reference
-    const pWindow = window.parent || window;
-
-    // Attach loud speaker function globally to parent window
-    pWindow.playLoudSpeech = function(rawText, rate, pitch) {
-        try {
-            const synth = pWindow.speechSynthesis || window.speechSynthesis;
-            if (!synth) {
-                alert("Speech synthesis is not supported on this browser.");
-                return;
-            }
-
-            synth.cancel(); // Stop any active speech
-            if (synth.paused) {
-                synth.resume();
-            }
-
-            // Clean text: strip markdown symbols and emojis
-            let clean = rawText.replace(/[*#_>`\[\]]/g, ' ')
-                               .replace(/https?:\/\/\S+/g, '')
-                               .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
-                               .replace(/\s+/g, ' ')
-                               .trim();
-
-            if (!clean) return;
-
-            const utterance = new SpeechSynthesisUtterance(clean);
-            utterance.volume = 1.0; // 100% MAXIMUM LOUD VOLUME
-            utterance.rate = rate || 1.0;
-            utterance.pitch = pitch || 1.0;
-
-            // Pick loud, clear, natural English voice
-            function setVoice() {
-                const voices = synth.getVoices();
-                if (voices && voices.length > 0) {
-                    let best = voices.find(v => v.lang.startsWith('en') && (
-                        v.name.includes('Natural') || 
-                        v.name.includes('Google') || 
-                        v.name.includes('David') || 
-                        v.name.includes('Zira') || 
-                        v.name.includes('Samantha') || 
-                        v.name.includes('Microsoft')
-                    )) || voices.find(v => v.lang.startsWith('en')) || voices[0];
-                    if (best) utterance.voice = best;
-                }
-            }
-
-            setVoice();
-            if (synth.onvoiceschanged !== undefined) {
-                synth.onvoiceschanged = setVoice;
-            }
-
-            // Chrome keep-alive hack: periodically resume to prevent cutting off on long texts
-            const interval = setInterval(function() {
-                if (!synth.speaking) {
-                    clearInterval(interval);
-                } else {
-                    synth.resume();
-                }
-            }, 1000);
-
-            synth.speak(utterance);
-        } catch(e) {
-            console.error("Speech synthesis error:", e);
-        }
-    };
-
-    pWindow.stopLoudSpeech = function() {
-        try {
-            const synth = pWindow.speechSynthesis || window.speechSynthesis;
-            if (synth) synth.cancel();
-        } catch(e) {}
-    };
-
-    pWindow.copyAnswerText = function(text) {
-        try {
-            navigator.clipboard.writeText(text);
-            alert("📋 Answer copied to clipboard!");
-        } catch(e) {}
-    };
-})();
-</script>
-""", height=0)
 
 # -----------------------------------------------------------------------------
 # Pipeline Initialization (Cached in session)
@@ -218,9 +122,9 @@ if "messages" not in st.session_state:
             "content": (
                 "👋 **Hello! I am your RAG AI Voice Assistant.**\n\n"
                 "📌 **How to interact:**\n"
-                "- 📁 Upload documents in the sidebar, or click **'⚡ Load Sample Paper'** to start.\n"
-                "- 🎙️ Click the **microphone icon** to speak your questions out loud.\n"
-                "- 🔊 Click the **speaker button (left end of response)** to hear answers spoken loud and clear!"
+                "- 📁 Upload any PDF or document in the sidebar, or click **'⚡ Load Sample Paper'**.\n"
+                "- 🎙️ Use the **Voice Dictation** tool on the right to speak questions.\n"
+                "- 🔊 Click the **speaker button on the bottom-left** of any answer to hear it spoken loud and clear!"
             ),
             "sources": []
         }
@@ -232,14 +136,18 @@ if "indexed_docs" not in st.session_state:
 if "pending_prompt" not in st.session_state:
     st.session_state.pending_prompt = None
 
+if "active_audio_idx" not in st.session_state:
+    st.session_state.active_audio_idx = None
+
 # -----------------------------------------------------------------------------
-# Sidebar: Document Management, Voice Settings & Controls
+# Sidebar: Document Management, Voice Assistant & Model Config
 # -----------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("## 🎙️ Voice Assistant Settings")
-    auto_speak = st.toggle("⚡ Auto-Speak Responses", value=False, help="Automatically speak assistant responses loud upon generation")
-    speech_rate = st.slider("🗣️ Speech Speed", min_value=0.8, max_value=1.3, value=1.0, step=0.05)
-    speech_pitch = st.slider("🎵 Voice Pitch", min_value=0.8, max_value=1.2, value=1.0, step=0.05)
+    auto_speak = st.toggle("⚡ Auto-Speak Responses Loudly", value=False, help="Automatically speaks new assistant answers through your speakers")
+    voice_speed = st.select_slider("🗣️ Speech Speed", options=[-2, -1, 0, 1, 2], value=0, format_func=lambda x: {
+        -2: "Slower", -1: "Slow", 0: "Normal", 1: "Fast", 2: "Faster"
+    }[x])
 
     st.markdown("---")
     st.markdown("## 📚 Document Hub")
@@ -252,47 +160,42 @@ with st.sidebar:
             "Upload Documents",
             type=["pdf", "txt", "md", "csv", "docx"],
             accept_multiple_files=True,
-            help="Supported: PDF, Text, Markdown, CSV, Word"
+            help="Supported formats: PDF, TXT, Markdown, CSV, Word"
         )
-        if st.button("🚀 Ingest Uploaded Documents", use_container_width=True, type="primary"):
+        if st.button("🚀 Ingest Documents", use_container_width=True, type="primary"):
             if uploaded_files:
-                progress_bar = st.progress(0, text="Vectorizing documents...")
+                prog = st.progress(0, text="Indexing files...")
                 total_files = len(uploaded_files)
                 new_chunks = 0
-                
                 for idx, uf in enumerate(uploaded_files):
                     suffix = os.path.splitext(uf.name)[1]
                     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                         tmp.write(uf.read())
                         tmp_path = tmp.name
-
                     try:
                         res = pipeline.ingest(tmp_path)
-                        processed_chunks = res.get("chunks_processed", 0)
-                        new_chunks += processed_chunks
+                        chunks_got = res.get("chunks_processed", 0)
+                        new_chunks += chunks_got
                         st.session_state.indexed_docs.append({
                             "name": uf.name,
                             "type": suffix.lstrip(".").upper(),
-                            "chunks": processed_chunks
+                            "chunks": chunks_got
                         })
                     except Exception as e:
-                        st.error(f"Error reading {uf.name}: {e}")
+                        st.error(f"Error processing {uf.name}: {e}")
                     finally:
                         if os.path.exists(tmp_path):
                             os.remove(tmp_path)
-
-                    progress_bar.progress((idx + 1) / total_files, text=f"Indexed {uf.name}")
-
-                time.sleep(0.3)
-                progress_bar.empty()
-                st.success(f"Vectorized {new_chunks} chunks from {total_files} document(s)!")
+                    prog.progress((idx + 1) / total_files, text=f"Indexed {uf.name}")
+                prog.empty()
+                st.success(f"Indexed {new_chunks} chunks from {total_files} file(s)!")
             else:
-                st.warning("Please select at least one document to upload.")
+                st.warning("Please select at least one document.")
 
     with sample_tab:
-        st.markdown("Load pre-built AI research document for immediate testing.")
-        if st.button("⚡ Load Sample RAG Paper", use_container_width=True):
-            with st.spinner("Generating and vectorizing sample document..."):
+        st.markdown("Test RAG immediately with a pre-formatted research paper.")
+        if st.button("⚡ Load Sample Paper", use_container_width=True):
+            with st.spinner("Indexing sample paper..."):
                 sample_path = os.path.join(PROJECT_ROOT, "data", "sample_rag_paper.pdf")
                 if not os.path.exists(sample_path):
                     generate_sample_pdf(sample_path)
@@ -303,17 +206,17 @@ with st.sidebar:
                         "type": "PDF",
                         "chunks": res.get("chunks_processed", 0)
                     })
-                    st.success(f"Sample PDF loaded with {res.get('chunks_processed', 0)} chunks!")
+                    st.success(f"Sample PDF indexed with {res.get('chunks_processed', 0)} chunks!")
                 except Exception as e:
-                    st.error(f"Failed to load sample: {e}")
+                    st.error(f"Error: {e}")
 
     with raw_tab:
-        raw_title = st.text_input("Note Title", value="Notes.txt")
-        raw_content = st.text_area("Paste raw text or notes", height=110)
-        if st.button("📥 Index Text", use_container_width=True):
-            if raw_content.strip():
+        raw_title = st.text_input("Title", value="Notes.txt")
+        raw_text = st.text_area("Paste content", height=100)
+        if st.button("📥 Index Raw Content", use_container_width=True):
+            if raw_text.strip():
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode="w", encoding="utf-8") as tmp:
-                    tmp.write(raw_content)
+                    tmp.write(raw_text)
                     tmp_path = tmp.name
                 try:
                     res = pipeline.ingest(tmp_path)
@@ -322,7 +225,7 @@ with st.sidebar:
                         "type": "TXT",
                         "chunks": res.get("chunks_processed", 0)
                     })
-                    st.success(f"Indexed {res.get('chunks_processed', 0)} chunks from notes!")
+                    st.success(f"Indexed {res.get('chunks_processed', 0)} chunks!")
                 except Exception as e:
                     st.error(f"Error: {e}")
                 finally:
@@ -330,7 +233,7 @@ with st.sidebar:
                         os.remove(tmp_path)
 
     st.markdown("---")
-    st.markdown("## ⚙️ Model Settings")
+    st.markdown("## ⚙️ Model & Retrieval")
     model_type = st.selectbox(
         "LLM Backend",
         options=["fallback", "huggingface", "gemini", "openai"],
@@ -343,14 +246,13 @@ with st.sidebar:
     )
 
     if model_type == "gemini":
-        gemini_key = st.text_input("Gemini API Key", type="password")
-        if gemini_key:
-            os.environ["GEMINI_API_KEY"] = gemini_key
-
+        g_key = st.text_input("Gemini API Key", type="password")
+        if g_key:
+            os.environ["GEMINI_API_KEY"] = g_key
     elif model_type == "openai":
-        openai_key = st.text_input("OpenAI API Key", type="password")
-        if openai_key:
-            os.environ["OPENAI_API_KEY"] = openai_key
+        o_key = st.text_input("OpenAI API Key", type="password")
+        if o_key:
+            os.environ["OPENAI_API_KEY"] = o_key
 
     top_k = st.slider("Top K Retrieved Chunks", min_value=1, max_value=8, value=3)
 
@@ -362,6 +264,7 @@ with st.sidebar:
             st.session_state.messages = [
                 {"role": "assistant", "content": "Chat cleared. How can I help you today?", "sources": []}
             ]
+            st.session_state.active_audio_idx = None
             st.rerun()
     with c2:
         if st.button("⚠️ Reset DB", use_container_width=True):
@@ -370,11 +273,12 @@ with st.sidebar:
             st.session_state.messages = [
                 {"role": "assistant", "content": "Knowledge base reset. Upload new documents to start!", "sources": []}
             ]
+            st.session_state.active_audio_idx = None
             st.success("Vector store reset.")
             st.rerun()
 
 # -----------------------------------------------------------------------------
-# Main Dashboard Header & Metrics
+# Main Header & Metrics
 # -----------------------------------------------------------------------------
 st.title("🤖 RAG Knowledge Base & Voice Assistant")
 st.markdown(
@@ -416,7 +320,7 @@ with m4:
     """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Quick Prompt Suggestion Pills
+# Quick Prompt Pills
 # -----------------------------------------------------------------------------
 st.markdown("##### 💡 Suggested Questions")
 p1, p2, p3, p4 = st.columns(4)
@@ -436,136 +340,8 @@ with p4:
 st.markdown("---")
 
 # -----------------------------------------------------------------------------
-# Chatbot Message Feed (with ChatGPT-Style Left-End Speaker Toolbar)
+# Chat Messages Feed
 # -----------------------------------------------------------------------------
-def render_chatgpt_action_toolbar(content: str, msg_idx: int, sources: List[Any], auto_play: bool = False):
-    """
-    Renders ChatGPT-style action buttons aligned at the LEFT end of the assistant chat bubble:
-    [ 🔊 Read Aloud ] [ ⏹️ Stop ] [ 📋 Copy ]
-    """
-    safe_text = json.dumps(content)
-    audio_b64 = text_to_speech_base64(content)  # Generates real MP3 data URI if gTTS is present
-    
-    html_code = f"""
-    <div style="margin-top: 10px; display: flex; align-items: center; justify-content: flex-start; gap: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <button id="spk-{msg_idx}" onclick="handleSpeak_{msg_idx}()" 
-            title="Read aloud (loud voice)"
-            style="background: #282C34; color: #61AFEF; border: 1px solid #3E4451; border-radius: 6px; padding: 4px 12px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;">
-            <span style="font-size: 15px;">🔊</span> <b>Speak</b>
-        </button>
-
-        <button id="stp-{msg_idx}" onclick="handleStop_{msg_idx}()" 
-            title="Stop speaking"
-            style="background: #282C34; color: #E06C75; border: 1px solid #3E4451; border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
-            <span>⏹️</span> <b>Stop</b>
-        </button>
-
-        <button onclick="handleCopy_{msg_idx}()" 
-            title="Copy response to clipboard"
-            style="background: #282C34; color: #ABB2BF; border: 1px solid #3E4451; border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;">
-            <span>📋</span> <b>Copy</b>
-        </button>
-
-        <span id="stat-{msg_idx}" style="font-size: 12px; color: #98C379; margin-left: 6px;"></span>
-
-        {"<audio id='aud-" + str(msg_idx) + "' src='" + audio_b64 + "' style='display:none;'></audio>" if audio_b64 else ""}
-    </div>
-
-    <script>
-    var msgText_{msg_idx} = {safe_text};
-
-    function handleSpeak_{msg_idx}() {{
-        var pWindow = window.parent || window;
-        var audioElem = document.getElementById('aud-{msg_idx}');
-        var stat = document.getElementById('stat-{msg_idx}');
-        var btn = document.getElementById('spk-{msg_idx}');
-
-        stat.innerText = "🔊 Speaking loud...";
-        btn.style.background = "#1D4ED8";
-        btn.style.color = "#FFFFFF";
-
-        // 1. Try real audio playback if gTTS generated MP3
-        if (audioElem) {{
-            audioElem.currentTime = 0;
-            audioElem.volume = 1.0;
-            audioElem.play().then(function() {{
-                audioElem.onended = function() {{
-                    stat.innerText = "";
-                    btn.style.background = "#282C34";
-                    btn.style.color = "#61AFEF";
-                }};
-                return;
-            }}).catch(function(err) {{
-                // Fallback to Web Speech API
-                callWebSpeech_{msg_idx}();
-            }});
-        }} else {{
-            // 2. Call Web Speech API directly in parent window
-            callWebSpeech_{msg_idx}();
-        }}
-    }}
-
-    function callWebSpeech_{msg_idx}() {{
-        var pWindow = window.parent || window;
-        var stat = document.getElementById('stat-{msg_idx}');
-        var btn = document.getElementById('spk-{msg_idx}');
-
-        if (pWindow.playLoudSpeech) {{
-            pWindow.playLoudSpeech(msgText_{msg_idx}, {speech_rate}, {speech_pitch});
-        }} else {{
-            // Direct synthesis fallback
-            var synth = window.speechSynthesis;
-            if (synth) {{
-                synth.cancel();
-                synth.resume();
-                var clean = msgText_{msg_idx}.replace(/[*#_>`\\[\\]]/g, ' ').replace(/https?:\\/\\/\\S+/g, '').replace(/\\s+/g, ' ');
-                var u = new SpeechSynthesisUtterance(clean);
-                u.volume = 1.0;
-                u.rate = {speech_rate};
-                u.pitch = {speech_pitch};
-                synth.speak(u);
-            }}
-        }}
-
-        setTimeout(function() {{
-            stat.innerText = "";
-            btn.style.background = "#282C34";
-            btn.style.color = "#61AFEF";
-        }}, 8000);
-    }}
-
-    function handleStop_{msg_idx}() {{
-        var pWindow = window.parent || window;
-        if (pWindow.stopLoudSpeech) pWindow.stopLoudSpeech();
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-        var audioElem = document.getElementById('aud-{msg_idx}');
-        if (audioElem) {{
-            audioElem.pause();
-            audioElem.currentTime = 0;
-        }}
-        document.getElementById('stat-{msg_idx}').innerText = "";
-        document.getElementById('spk-{msg_idx}').style.background = "#282C34";
-        document.getElementById('spk-{msg_idx}').style.color = "#61AFEF";
-    }}
-
-    function handleCopy_{msg_idx}() {{
-        var pWindow = window.parent || window;
-        if (pWindow.copyAnswerText) {{
-            pWindow.copyAnswerText(msgText_{msg_idx});
-        }} else {{
-            navigator.clipboard.writeText(msgText_{msg_idx});
-            alert("Copied to clipboard!");
-        }}
-    }}
-
-    if ({'true' if auto_play else 'false'}) {{
-        setTimeout(handleSpeak_{msg_idx}, 500);
-    }}
-    </script>
-    """
-    components.html(html_code, height=44)
-
-
 for idx, msg in enumerate(st.session_state.messages):
     role = msg["role"]
     content = msg["content"]
@@ -574,165 +350,168 @@ for idx, msg in enumerate(st.session_state.messages):
     with st.chat_message(role, avatar="🤖" if role == "assistant" else "👤"):
         st.markdown(content)
 
-        # For assistant responses: Render ChatGPT-style left action bar (Speaker, Stop, Copy)
+        # Bottom-left action toolbar for assistant responses (ChatGPT style)
         if role == "assistant" and idx > 0:
-            render_chatgpt_action_toolbar(content, msg_idx=idx, sources=sources, auto_play=False)
+            act_col1, act_col2, act_col3, _ = st.columns([1.6, 1.4, 2.6, 6])
+            
+            with act_col1:
+                # Speaker button on the left end
+                if st.button("🔊 Speak", key=f"btn_speak_{idx}", help="Play answer loud through speakers"):
+                    st.session_state.active_audio_idx = idx
 
-            # Context Inspector Expander
-            if sources:
-                with st.expander(f"🔍 Inspect Retrieved Sources ({len(sources)} Chunks)"):
-                    for i, chunk in enumerate(sources, 1):
-                        if isinstance(chunk, dict):
-                            text = chunk.get("text", "")
-                            score = chunk.get("score")
-                            meta = chunk.get("metadata", {})
-                            source_doc = meta.get("source", "Document")
-                            page = meta.get("page", 1)
-                            score_str = f"Distance: {score:.4f}" if score is not None else "Matched"
-                        else:
-                            text = str(chunk)
-                            source_doc = "Document"
-                            page = 1
-                            score_str = "Matched"
+            with act_col2:
+                if st.button("⏹️ Stop", key=f"btn_stop_{idx}", help="Stop audio playback"):
+                    if st.session_state.active_audio_idx == idx:
+                        st.session_state.active_audio_idx = None
 
-                        st.markdown(f"""
-                        <div class="source-box">
-                            <div class="source-meta">📌 [Chunk {i}] • {source_doc} • Page {page} • <span style="color:#61AFEF;">{score_str}</span></div>
-                            {text}
-                        </div>
-                        """, unsafe_allow_html=True)
+            with act_col3:
+                # Context chunks toggle
+                if sources:
+                    with st.popover(f"🔍 Sources ({len(sources)})"):
+                        for s_idx, chunk in enumerate(sources, 1):
+                            if isinstance(chunk, dict):
+                                text = chunk.get("text", "")
+                                score = chunk.get("score")
+                                meta = chunk.get("metadata", {})
+                                source_doc = meta.get("source", "Document")
+                                page = meta.get("page", 1)
+                                score_str = f"Distance: {score:.4f}" if score is not None else "Matched"
+                            else:
+                                text = str(chunk)
+                                source_doc = "Document"
+                                page = 1
+                                score_str = "Matched"
+
+                            st.markdown(f"""
+                            <div class="source-box">
+                                <div class="source-meta">📌 [Chunk {s_idx}] • {source_doc} • Page {page} • <span style="color:#61AFEF;">{score_str}</span></div>
+                                {text}
+                            </div>
+                            """, unsafe_allow_html=True)
+
+            # If user clicked Speak (or auto-speak was triggered for this message):
+            if st.session_state.active_audio_idx == idx:
+                with st.spinner("🔊 Generating loud voice output..."):
+                    audio_bytes = generate_speech_audio(content, volume=100, rate=voice_speed)
+                    if audio_bytes:
+                        st.audio(audio_bytes, format="audio/wav", autoplay=True)
+                    else:
+                        st.info("💡 Windows audio speech synthesized.")
 
 # -----------------------------------------------------------------------------
-# Real-Time Voice Input Bar (Right-Side Microphone with Live Spoken Words Display)
+# Voice Input Assistant Bar (Microphone on the Right Space)
 # -----------------------------------------------------------------------------
 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
-# Interactive Speech-to-Text Widget where spoken words appear dynamically in real time
-voice_box_col1, voice_box_col2 = st.columns([7, 3])
-with voice_box_col2:
-    components.html("""
-    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-family: sans-serif;">
-        <button id="btn-mic" onclick="toggleMicrophone()" 
-            style="background: linear-gradient(135deg, #2B6CB0 0%, #1A365D 100%); color: #EBF8FF; border: 1px solid #4299E1; border-radius: 20px; padding: 7px 18px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 0.25s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
-            <span id="mic-icon" style="font-size: 15px;">🎙️</span> 
-            <span id="mic-label">Speak Question</span>
-        </button>
-    </div>
-    <div id="live-speech-box" style="margin-top: 6px; font-size: 12px; color: #90CDF4; font-family: monospace; text-align: right; min-height: 16px; font-style: italic;"></div>
+# Right space voice recognition widget: spoken words appear immediately in the box
+v_col_left, v_col_right = st.columns([7, 3])
+with v_col_right:
+    with st.expander("🎙️ **Voice Assistant (Speak Question)**", expanded=False):
+        st.caption("Click below to dictate your question using your microphone.")
+        
+        # Self-contained Web Speech API component (does NOT touch window.parent)
+        components.html(r"""
+        <div style="font-family: sans-serif; text-align: center;">
+            <button id="mic-btn" onclick="startDictation()" 
+                style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #FFFFFF; border: none; border-radius: 20px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+                <span id="mic-icon" style="font-size: 16px;">🎙️</span> 
+                <span id="mic-text">Click & Speak</span>
+            </button>
+            <div id="live-text" style="margin-top: 10px; font-size: 13px; color: #60A5FA; font-style: italic; min-height: 24px; padding: 6px; background: #1E293B; border-radius: 8px; border: 1px dashed #3B82F6;">
+                (Your spoken words will appear here in real time)
+            </div>
+        </div>
 
-    <script>
-    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    var recognizer = null;
-    var listening = false;
-    var pWindow = window.parent || window;
+        <script>
+        var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var rec = null;
+        var active = false;
 
-    if (SpeechRecognition) {
-        recognizer = new SpeechRecognition();
-        recognizer.continuous = false;
-        recognizer.interimResults = true; // Real-time interim results as words are spoken
-        recognizer.lang = 'en-US';
+        if (SpeechRec) {
+            rec = new SpeechRec();
+            rec.continuous = false;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
 
-        recognizer.onstart = function() {
-            listening = true;
-            document.getElementById('mic-icon').innerText = "🔴";
-            document.getElementById('mic-label').innerText = "Listening...";
-            document.getElementById('btn-mic').style.background = "linear-gradient(135deg, #C53030 0%, #742A2A 100%)";
-            document.getElementById('live-speech-box').innerText = "Speak now... words will appear below";
-        };
+            rec.onstart = function() {
+                active = true;
+                document.getElementById('mic-icon').innerText = "🔴";
+                document.getElementById('mic-text').innerText = "Listening...";
+                document.getElementById('mic-btn').style.background = "linear-gradient(135deg, #DC2626 0%, #991B1B 100%)";
+                document.getElementById('live-text').innerText = "Listening to your voice...";
+            };
 
-        recognizer.onresult = function(event) {
-            var interim = "";
-            var finalTranscript = "";
-
-            for (var i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                } else {
-                    interim += event.results[i][0].transcript;
+            rec.onresult = function(e) {
+                var spoken = "";
+                for (var i = e.resultIndex; i < e.results.length; ++i) {
+                    spoken += e.results[i][0].transcript;
                 }
-            }
-
-            var currentWords = finalTranscript || interim;
-            // Display words dynamically in the live speech box
-            document.getElementById('live-speech-box').innerText = '🎤 "' + currentWords + '"';
-
-            // Also dynamically inject spoken words into Streamlit's chat input textarea!
-            try {
-                var pDoc = pWindow.document;
-                var chatInput = pDoc.querySelector('textarea[data-testid="stChatInputTextArea"]') || pDoc.querySelector('textarea');
-                if (chatInput) {
-                    chatInput.value = currentWords;
-                    chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+                // Spoken words appear in the live box dynamically as user speaks!
+                document.getElementById('live-text').innerText = '🎤 "' + spoken + '"';
+                
+                // Copy to clipboard for instant pasting
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(spoken);
                 }
-            } catch(e) {}
-        };
+            };
 
-        recognizer.onerror = function(e) {
-            document.getElementById('live-speech-box').innerText = "Mic error: " + e.error;
-            resetMicUI();
-        };
+            rec.onerror = function(e) {
+                document.getElementById('live-text').innerText = "Mic error: " + e.error;
+                resetMic();
+            };
 
-        recognizer.onend = function() {
-            resetMicUI();
-            // Trigger question submission if final speech was captured
-            var pDoc = pWindow.document;
-            var chatInput = pDoc.querySelector('textarea[data-testid="stChatInputTextArea"]');
-            var submitBtn = pDoc.querySelector('button[data-testid="stChatInputSubmitButton"]');
-            if (chatInput && chatInput.value.trim() && submitBtn) {
-                setTimeout(function() {
-                    submitBtn.click();
-                }, 300);
+            rec.onend = function() {
+                resetMic();
+            };
+        }
+
+        function resetMic() {
+            active = false;
+            document.getElementById('mic-icon').innerText = "🎙️";
+            document.getElementById('mic-text').innerText = "Click & Speak";
+            document.getElementById('mic-btn').style.background = "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)";
+        }
+
+        function startDictation() {
+            if (!rec) {
+                alert("Microphone recognition is not supported in this browser. Please use Chrome or Edge.");
+                return;
             }
-        };
-    }
-
-    function resetMicUI() {
-        listening = false;
-        document.getElementById('mic-icon').innerText = "🎙️";
-        document.getElementById('mic-label').innerText = "Speak Question";
-        document.getElementById('btn-mic').style.background = "linear-gradient(135deg, #2B6CB0 0%, #1A365D 100%)";
-    }
-
-    function toggleMicrophone() {
-        if (!recognizer) {
-            alert("Microphone recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.");
-            return;
+            if (active) {
+                rec.stop();
+            } else {
+                rec.start();
+            }
         }
-        if (listening) {
-            recognizer.stop();
-        } else {
-            recognizer.start();
-        }
-    }
-    </script>
-    """, height=50)
+        </script>
+        """, height=105)
 
 # -----------------------------------------------------------------------------
-# Chat Input & Response Generation
+# Chat Input & Assistant Response Generation
 # -----------------------------------------------------------------------------
-user_query = st.chat_input("Ask any question about your documents (or use the microphone on the right)...")
+user_query = st.chat_input("Ask any question about your documents...")
 
 query_to_run = user_query or st.session_state.pending_prompt
 st.session_state.pending_prompt = None
 
 if query_to_run:
-    # Append user message
+    # Append user question
     st.session_state.messages.append({"role": "user", "content": query_to_run, "sources": []})
     with st.chat_message("user", avatar="👤"):
         st.markdown(query_to_run)
 
-    # Generate assistant response
+    # Generate assistant answer
     with st.chat_message("assistant", avatar="🤖"):
         if total_chunks_in_db == 0:
             bot_reply = (
                 "⚠️ **No Documents Indexed Yet!**\n\n"
-                "🔹 Please upload a PDF or document using the sidebar.\n"
-                "🔹 Or click **'⚡ Load Sample Paper'** to test immediately with sample research content."
+                "🔹 Please upload a PDF or text document in the sidebar.\n"
+                "🔹 Or click **'⚡ Load Sample Paper'** to test the pipeline with research content."
             )
             st.warning(bot_reply)
             st.session_state.messages.append({"role": "assistant", "content": bot_reply, "sources": []})
         else:
-            with st.spinner("Searching knowledge base and generating answer..."):
+            with st.spinner("Searching documents & generating answer..."):
                 try:
                     result = pipeline.query(query=query_to_run, top_k=top_k, model_type=model_type)
                     bot_reply = result.get("response", "No response generated.")
@@ -748,38 +527,16 @@ if query_to_run:
                         time.sleep(0.015)
                     message_placeholder.markdown(bot_reply)
 
-                    # Render the left-aligned action bar with the loud speaker button
+                    # New message index
                     new_idx = len(st.session_state.messages)
-                    render_chatgpt_action_toolbar(
-                        bot_reply,
-                        msg_idx=new_idx,
-                        sources=retrieved_chunks,
-                        auto_play=auto_speak
-                    )
-
-                    # Show sources expander
-                    if retrieved_chunks:
-                        with st.expander(f"🔍 Inspect Retrieved Sources ({len(retrieved_chunks)} Chunks)"):
-                            for i, chunk in enumerate(retrieved_chunks, 1):
-                                if isinstance(chunk, dict):
-                                    text = chunk.get("text", "")
-                                    score = chunk.get("score")
-                                    meta = chunk.get("metadata", {})
-                                    source_doc = meta.get("source", "Document")
-                                    page = meta.get("page", 1)
-                                    score_str = f"Distance: {score:.4f}" if score is not None else "Matched"
-                                else:
-                                    text = str(chunk)
-                                    source_doc = "Document"
-                                    page = 1
-                                    score_str = "Matched"
-
-                                st.markdown(f"""
-                                <div class="source-box">
-                                    <div class="source-meta">📌 [Chunk {i}] • {source_doc} • Page {page} • <span style="color:#61AFEF;">{score_str}</span></div>
-                                    {text}
-                                </div>
-                                """, unsafe_allow_html=True)
+                    
+                    # If auto-speak is enabled, trigger voice immediately
+                    if auto_speak:
+                        st.session_state.active_audio_idx = new_idx
+                        with st.spinner("🔊 Speaking answer out loud..."):
+                            audio_bytes = generate_speech_audio(bot_reply, volume=100, rate=voice_speed)
+                            if audio_bytes:
+                                st.audio(audio_bytes, format="audio/wav", autoplay=True)
 
                     # Save to chat history
                     st.session_state.messages.append({
@@ -789,7 +546,7 @@ if query_to_run:
                     })
 
                 except Exception as e:
-                    err_msg = f"❌ Error while answering question: {e}"
+                    err_msg = f"❌ Error while generating answer: {e}"
                     st.error(err_msg)
                     st.session_state.messages.append({"role": "assistant", "content": err_msg, "sources": []})
 
@@ -797,7 +554,7 @@ if query_to_run:
 # Bottom Utilities: Export Conversation
 # -----------------------------------------------------------------------------
 if len(st.session_state.messages) > 1:
-    st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     col_dl1, col_dl2 = st.columns([8, 2])
     with col_dl2:
         transcript_lines = ["# RAG AI Voice & Chat Transcript\n"]
