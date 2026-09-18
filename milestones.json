@@ -1,0 +1,81 @@
+{
+  "projectId": "rag-pipeline-v1",
+  "projectName": "Simple RAG Pipeline",
+  "version": "1.0.0",
+  "milestones": [
+    {
+      "milestoneId": "M1",
+      "title": "Discovery & Architecture",
+      "status": "done",
+      "completionCriteria": [
+        "Project plan and milestones defined",
+        "Architecture specifications drafted in architecture.json",
+        "API and module contracts defined in api-contract.json",
+        "Strict file ownership boundaries mapped in ownership-map.json"
+      ],
+      "deliverables": [
+        "project-plan.json",
+        "milestones.json",
+        "architecture.json",
+        "api-contract.json",
+        "ownership-map.json"
+      ]
+    },
+    {
+      "milestoneId": "M2",
+      "title": "Core Implementation",
+      "status": "done",
+      "completionCriteria": [
+        "PDF Reader extracts clean text from input PDF documents (Step 1)",
+        "Text Chunker splits extracted text with configurable chunk size and overlap (Step 2)",
+        "Vector Store embeds chunks using sentence-transformers/all-MiniLM-L6-v2 and indexes in ChromaDB (Step 3)",
+        "CLI and interactive interface collect user query (Step 4)",
+        "Retrieval embeds user query and fetches top-k relevant chunks (Step 5)",
+        "Modular Generator synthesizes contextual responses (Step 6)"
+      ],
+      "deliverables": [
+        "src/rag_pipeline/pdf_reader.py",
+        "src/rag_pipeline/chunker.py",
+        "src/rag_pipeline/vector_store.py",
+        "src/rag_pipeline/generator.py",
+        "src/rag_pipeline/pipeline.py",
+        "src/cli.py",
+        "src/app_streamlit.py"
+      ]
+    },
+    {
+      "milestoneId": "M3",
+      "title": "Integration, Testing & Security Audit",
+      "status": "done",
+      "completionCriteria": [
+        "All components integrate cleanly without errors",
+        "Unit and integration tests pass with high coverage",
+        "Security audit checks for injection, safe file handling, and dependency risks"
+      ],
+      "deliverables": [
+        "integration-report.json",
+        "qa-report.json",
+        "security-audit.json"
+      ]
+    },
+    {
+      "milestoneId": "M4",
+      "title": "Documentation & Release",
+      "status": "done",
+      "completionCriteria": [
+        "README.md with setup, CLI usage, and architecture overview",
+        "Dependency specification in requirements.txt",
+        "Windows launch scripts run_cli.bat and run_streamlit.bat",
+        "Final release report signed off"
+      ],
+      "deliverables": [
+        "README.md",
+        "requirements.txt",
+        ".env.example",
+        "run_cli.bat",
+        "run_streamlit.bat",
+        "release-report.json"
+      ]
+    }
+  ]
+}

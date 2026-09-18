@@ -1,0 +1,36 @@
+{
+  "reportId": "INT-REP-001",
+  "projectId": "rag-pipeline-v1",
+  "timestamp": "2026-09-18T13:02:30+05:30",
+  "overallStatus": "PASS",
+  "integrationDetails": {
+    "modulesIntegrated": [
+      "src/rag_pipeline/pdf_reader.py",
+      "src/rag_pipeline/chunker.py",
+      "src/rag_pipeline/vector_store.py",
+      "src/rag_pipeline/generator.py",
+      "src/rag_pipeline/pipeline.py",
+      "src/cli.py",
+      "src/app_streamlit.py"
+    ],
+    "contractCompliance": {
+      "apiContract": "api-contract.json",
+      "ingestEndpoint": {
+        "status": "COMPLIANT",
+        "method": "POST /api/v1/ingest",
+        "inputs": ["file_path", "chunk_size", "chunk_overlap"],
+        "outputs": ["status", "chunks_processed"]
+      },
+      "queryEndpoint": {
+        "status": "COMPLIANT",
+        "method": "POST /api/v1/query",
+        "inputs": ["query", "top_k", "model_type"],
+        "outputs": ["response", "context_chunks"]
+      }
+    },
+    "fileOwnershipAudit": {
+      "violationsFound": 0,
+      "ownershipStrictlyRespected": true
+    }
+  }
+}

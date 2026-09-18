@@ -1,0 +1,24 @@
+# Core PDF Parsing
+pypdf>=3.17.0
+
+# Vector Database and Embeddings
+chromadb>=0.4.22
+sentence-transformers>=2.2.2
+
+# User Interfaces
+streamlit>=1.30.0
+
+# Local Models & Deep Learning (optional local inference)
+transformers>=4.36.0
+torch>=2.0.0
+
+# Optional API-based LLMs
+google-generativeai>=0.3.0
+openai>=1.6.0
+python-dotenv>=1.0.0
+
+# PDF Generation Utility
+reportlab>=4.0.0
+
+# Voice Assistant & Text-to-Speech
+gTTS>=2.4.0

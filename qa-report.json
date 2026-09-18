@@ -1,0 +1,37 @@
+{
+  "$schema": "./.agents/schemas/qa-report.schema.json",
+  "reportId": "QA-REP-001",
+  "timestamp": "2026-09-18T13:02:45+05:30",
+  "overallStatus": "passed",
+  "testSuites": [
+    {
+      "suiteName": "Text Chunker Unit Tests (test_chunker.py)",
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suiteName": "Vector Store & Embedding Tests (test_vector_store.py)",
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suiteName": "Modular Generator Tests (test_generator.py)",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suiteName": "End-to-End RAG Pipeline Integration Tests (test_pipeline.py)",
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "defects": []
+}

@@ -1,0 +1,92 @@
+{
+  "version": "1.0.0",
+  "directories": [
+    {
+      "path": "src/rag_pipeline",
+      "ownerAgent": "shared",
+      "description": "Core RAG pipeline modules, shared ownership between data-lead and backend-lead"
+    },
+    {
+      "path": "tests",
+      "ownerAgent": "qa-lead",
+      "description": "Test suites"
+    },
+    {
+      "path": "docs",
+      "ownerAgent": "documentation-agent",
+      "description": "Documentation files"
+    }
+  ],
+  "files": [
+    {
+      "path": "src/rag_pipeline/pdf_reader.py",
+      "ownerAgent": "data-lead",
+      "shared": false
+    },
+    {
+      "path": "src/rag_pipeline/chunker.py",
+      "ownerAgent": "data-lead",
+      "shared": false
+    },
+    {
+      "path": "src/rag_pipeline/vector_store.py",
+      "ownerAgent": "data-lead",
+      "shared": false
+    },
+    {
+      "path": "src/rag_pipeline/generator.py",
+      "ownerAgent": "backend-lead",
+      "shared": false
+    },
+    {
+      "path": "src/rag_pipeline/pipeline.py",
+      "ownerAgent": "backend-lead",
+      "shared": false
+    },
+    {
+      "path": "src/rag_pipeline/config.py",
+      "ownerAgent": "backend-lead",
+      "shared": false
+    },
+    {
+      "path": "src/rag_pipeline/__init__.py",
+      "ownerAgent": "backend-lead",
+      "shared": false
+    },
+    {
+      "path": "src/cli.py",
+      "ownerAgent": "frontend-lead",
+      "shared": false
+    },
+    {
+      "path": "src/app_streamlit.py",
+      "ownerAgent": "frontend-lead",
+      "shared": false
+    },
+    {
+      "path": "requirements.txt",
+      "ownerAgent": "devops-release-lead",
+      "shared": false
+    },
+    {
+      "path": ".env.example",
+      "ownerAgent": "devops-release-lead",
+      "shared": false
+    },
+    {
+      "path": "run_cli.bat",
+      "ownerAgent": "devops-release-lead",
+      "shared": false
+    },
+    {
+      "path": "run_streamlit.bat",
+      "ownerAgent": "devops-release-lead",
+      "shared": false
+    },
+    {
+      "path": "README.md",
+      "ownerAgent": "documentation-agent",
+      "shared": false
+    }
+  ]
+}

@@ -1,881 +1,164 @@
-# 🏢 Software Engineering Company — Antigravity Agent Template
+# Simple RAG Pipeline
 
-> A **production-ready, multi-agent software engineering company** built for [Google Antigravity (AGY)](https://antigravity.dev).
-> Drop this `.agents/` folder into any project and get **43 specialized AI agents**, **20 rich skill guides**, and **3 workflow pipelines** — ready to build real software together.
-
-[![Agents](https://img.shields.io/badge/Agents-43-6366f1?style=flat-square)](#-agent-roster)
-[![Skills](https://img.shields.io/badge/Skills-20-10b981?style=flat-square)](#-skills-library)
-[![Workflows](https://img.shields.io/badge/Workflows-3-f59e0b?style=flat-square)](#-workflows)
-[![Registry](https://img.shields.io/badge/Registry-v2.3.0-8b5cf6?style=flat-square)](.agents/registry/agent-registry.json)
-[![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square)](./LICENSE)
+A lightweight, robust, end-to-end **Retrieval-Augmented Generation (RAG)** pipeline built in Python with **ChromaDB**, **sentence-transformers**, and modular LLM backends.
 
 ---
 
-## 📋 Table of Contents
+## 🚀 Overview & RAG Operations
 
-- [What Is This?](#-what-is-this)
-- [How It Works](#-how-it-works)
-- [Quick Start](#-quick-start)
-- [Architecture Overview](#-architecture-overview)
-- [Agent Roster](#-agent-roster)
-  - [Orchestration](#orchestration-2)
-  - [Architecture & Design](#architecture--design-3)
-  - [Frontend Department](#frontend-department-9)
-  - [Backend Department](#backend-department-8)
-  - [Data Department](#data-department-4)
-  - [QA Department](#qa-department-5)
-  - [DevOps Department](#devops-department-5)
-  - [Mobile Department](#mobile-department-3)
-  - [Cross-Cutting](#cross-cutting-4)
-- [Skills Library](#-skills-library)
-- [Workflows](#-workflows)
-- [How to Use](#-how-to-use)
-- [Project Structure](#-project-structure)
-- [How Agents Communicate](#-how-agents-communicate)
-- [Release Gate System](#-release-gate-system)
-- [Token Usage — How to Keep It Efficient](#-token-usage--how-to-keep-it-efficient)
-- [Adding New Agents](#-adding-new-agents)
-- [Adding New Skills](#-adding-new-skills)
-- [Contributing](#-contributing)
+This project implements the complete 6-step RAG workflow requested:
+
+| Step | Operation | Component | Implementation |
+|---|---|---|---|
+| **Step 1** | Read text data from input PDF | [`src/rag_pipeline/pdf_reader.py`](file:///C:/Users/Tulasi%20S/OneDrive/Desktop/rag/src/rag_pipeline/pdf_reader.py) | `PDFReader` extracts page-by-page text cleanly, preserving page metadata. |
+| **Step 2** | Convert text data into chunks | [`src/rag_pipeline/chunker.py`](file:///C:/Users/Tulasi%20S/OneDrive/Desktop/rag/src/rag_pipeline/chunker.py) | `TextChunker` creates sliding-window chunks (default 500 chars, 50 overlap) respecting word boundaries. |
+| **Step 3** | Embed using `all-MiniLM-L6-v2` & store in ChromaDB | [`src/rag_pipeline/vector_store.py`](file:///C:/Users/Tulasi%20S/OneDrive/Desktop/rag/src/rag_pipeline/vector_store.py) | `ChromaVectorStore` generates dense 384-d embeddings and stores them in a local ChromaDB collection. |
+| **Step 4** | User query input interface | [`src/cli.py`](file:///C:/Users/Tulasi%20S/OneDrive/Desktop/rag/src/cli.py) & [`src/app_streamlit.py`](file:///C:/Users/Tulasi%20S/OneDrive/Desktop/rag/src/app_streamlit.py) | Interactive CLI prompt loop and Streamlit web dashboard for uploading PDFs and entering queries. |
+| **Step 5** | Embed query & extract top-k chunks from vector DB | [`src/rag_pipeline/vector_store.py`](file:///C:/Users/Tulasi%20S/OneDrive/Desktop/rag/src/rag_pipeline/vector_store.py) | Vector store computes query embeddings and retrieves nearest semantic chunks ranked by distance. |
+| **Step 6** | Generate contextual response using modular LLM | [`src/rag_pipeline/generator.py`](file:///C:/Users/Tulasi%20S/OneDrive/Desktop/rag/src/rag_pipeline/generator.py) | `ModularGenerator` synthesizes answers using local extractive synthesis, Hugging Face, Gemini, or OpenAI. |
 
 ---
 
-## 🤔 What Is This?
-
-Instead of one general-purpose AI trying to do everything at once, this template gives you a **hierarchy of 43 specialized agents** — each with a narrow role, the right tools, and the minimum token footprint.
-
-It mirrors how a real software engineering company works:
+## 📁 Repository Structure
 
 ```
-You (user)
-  └─▶ project-manager          ← single entry point; asks clarifying questions
-        ├─▶ workflow-manager   ← executes structured delivery pipelines
-        ├─▶ technical-architect
-        ├─▶ uiux-lead          → mockup-wireframe-worker
-        ├─▶ [PARALLEL STREAMS]
-        │     ├─▶ frontend-lead  → 8 frontend workers
-        │     ├─▶ backend-lead   → 7 backend workers
-        │     ├─▶ data-lead      → 3 database workers
-        │     ├─▶ mobile-lead    → 2 mobile workers
-        │     └─▶ security-lead
-        ├─▶ integration-manager
-        ├─▶ qa-lead            → 4 test workers
-        ├─▶ devops-release-lead → 4 devops workers (observability is BLOCKING)
-        └─▶ documentation-agent
+├── data/                       # Directory for input PDF documents
+│   └── sample_rag_paper.pdf    # Auto-generated sample document
+├── src/
+│   ├── cli.py                  # Step 4: Interactive Command-Line Interface
+│   ├── app_streamlit.py        # Step 4: Interactive Streamlit Web UI
+│   ├── create_sample_pdf.py    # Helper utility to generate test PDFs
+│   └── rag_pipeline/           # Core RAG modules
+│       ├── __init__.py         # Package exports
+│       ├── config.py           # Pipeline configuration dataclass
+│       ├── pdf_reader.py       # Step 1: PDF ingestion & text extraction
+│       ├── chunker.py          # Step 2: Sliding-window text chunking
+│       ├── vector_store.py     # Steps 3 & 5: ChromaDB vector store & embeddings
+│       ├── generator.py        # Step 6: Modular LLM response generator
+│       └── pipeline.py         # End-to-end orchestrator
+├── tests/                      # Automated test suite
+│   ├── test_chunker.py
+│   ├── test_vector_store.py
+│   ├── test_generator.py
+│   ├── test_pipeline.py
+│   └── run_all_tests.py
+├── architecture.json           # Architecture specification
+├── api-contract.json           # API contract & schemas
+├── ownership-map.json          # Engineering file ownership mapping
+├── project-plan.json           # Project delivery plan & task tracking
+├── milestones.json             # Milestone definitions & criteria
+├── requirements.txt            # Python dependencies
+├── run_cli.bat                 # Windows one-click CLI launcher
+├── run_streamlit.bat           # Windows one-click Streamlit launcher
+└── README.md
 ```
-
-**Every agent knows:**
-- What it owns (and what it doesn't)
-- Which skills to read before acting
-- Which workers to invoke (leads only)
-- What files to produce as output
-- When to block and wait (observability-worker before release)
 
 ---
 
-## ⚙️ How It Works
+## 🛠️ Installation & Setup
 
-### 1. Agent Hierarchy
+1. **Clone or open the workspace:**
+   ```bash
+   cd "C:\Users\Tulasi S\OneDrive\Desktop\rag"
+   ```
 
-There are three tiers:
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-| Tier | Examples | Model | Can Invoke Workers? | Has `invoke_subagent`? |
-|---|---|---|---|---|
-| **Orchestrators** | `project-manager`, `workflow-manager` | `pro` | ✅ Yes | ✅ Yes |
-| **Leads** | `frontend-lead`, `backend-lead`, `mobile-lead` | `pro` | ✅ Yes | ✅ Yes |
-| **Workers** | `ui-component-worker`, `auth-worker` | `flash` | ❌ No | ❌ No |
-
-Leads are **manager-practitioners** — they architect, scaffold, and delegate. Workers own narrow implementation slices. This keeps each agent's context small and its output focused.
-
-### 2. Skills System
-
-Skills are **on-demand knowledge guides** stored in `.agents/skills/`. They are NOT loaded automatically — each agent has an explicit `[!IMPORTANT]` instruction telling it which skill files to read before starting work. This is **progressive disclosure**: the full content only enters context when the agent needs it.
-
-```
-Agent starts work
-  → Reads its SKILL.md files
-  → Follows the patterns, checklists, and code examples
-  → Produces output that meets quality criteria
-  → Returns artifacts to its superior
-```
-
-Each skill file contains:
-- Real code examples (not pseudocode)
-- Checklists for common mistakes
-- Decision tables ("when to use X vs Y")
-- Anti-patterns with explanations
-
-### 3. Parallel Execution
-
-Leads and orchestrators launch workers via `invoke_subagent` in batches — multiple agents run **simultaneously**, not sequentially:
-
-```typescript
-// Internally, project-manager does this:
-invoke_subagent([
-  { TypeName: "frontend-lead", ... },   // ┐
-  { TypeName: "backend-lead", ... },    // ├─ All run in parallel
-  { TypeName: "data-lead", ... },       // │
-  { TypeName: "mobile-lead", ... },     // ┘
-])
-// Each lead then invokes its own workers in parallel
-```
-
-### 4. Phase Gate System
-
-Agents cannot advance phases without required artifacts. Each gate is enforced by the orchestrating agent checking for specific files before proceeding:
-
-```
-Phase 1: Planning
-  ↓  project-plan.json
-Phase 2: Architecture
-  ↓  architecture.json + api-contract.json + ownership-map.json + design-spec.md
-Phase 3: Implementation (parallel)
-  ↓  All lead handoff reports
-Phase 4: Integration
-  ↓  integration-report.json (build PASS)
-Phase 5: QA + Security
-  ↓  qa-report.json (PASS) + security sign-off
-Phase 6: Observability  ← BLOCKING — must complete before Phase 7
-  ↓  observability-report.json (PASS)
-Phase 7: Release
-  ↓  release-report.json + git tag
-```
-
-### 5. Blocking Invocation Pattern
-
-The `observability-worker` is the only **blocking** agent — `devops-release-lead` invokes it and explicitly waits for `observability-report.json` to come back with `status: "PASS"` before tagging a release. This ensures every production deployment has error tracking, structured logging, health endpoints, and alerting in place.
-
-```
-devops-release-lead
-  → invoke observability-worker   ← synchronous; do NOT proceed until it returns
-  → wait for observability-report.json { status: "PASS" }
-  → only then: apply version bump + git tag + release-report.json
-```
-
-### 6. Agent-to-Agent Communication
-
-- **Lead → Worker:** via `invoke_subagent`
-- **Lead → Lead:** via `send_message` (peer communication, e.g. frontend-lead asking uiux-lead for clarification)
-- **Worker → Lead:** returns completed work as files + a brief handoff message
-- **Worker → Worker:** workers do NOT communicate directly — all cross-worker coordination goes through the parent lead
+3. **(Optional) Configure environment variables:**
+   Copy `.env.example` to `.env` if you want to use cloud LLM providers:
+   ```bash
+   cp .env.example .env
+   ```
+   *Note: If no API keys are provided, the pipeline automatically runs 100% offline using its built-in extractive synthesizer.*
 
 ---
 
-## 🚀 Quick Start
+## 🏃 Quick Start Guide
 
-### 1. Clone into your project
-
+### 1. Generate a Sample PDF (for immediate testing)
 ```bash
-# Clone as a new project
-git clone https://github.com/codinghubindia/software-engineering-company.git my-project
-cd my-project
-
-# Or copy just the .agents/ folder into an existing project
-cp -r software-engineering-company/.agents ./your-project/
+python src/create_sample_pdf.py
 ```
+This generates a test document at `data/sample_rag_paper.pdf`.
 
-### 2. Open in Antigravity
-
+### 2. Run the Interactive CLI (Step 4)
+You can run directly or use the Windows launcher `run_cli.bat`:
 ```bash
-agy   # in your project directory
+# Interactive mode (prompts for PDF path & questions)
+python src/cli.py --interactive
+
+# Or ingest and query in a single command:
+python src/cli.py --pdf data/sample_rag_paper.pdf --query "What are the benefits of RAG?"
 ```
 
-### 3. Pick your entry point
-
-In the Antigravity sidebar, select **`project-manager`** and describe what you want to build:
-
+Sample CLI output:
 ```
-Build a SaaS task management app with:
-- User registration and JWT auth
-- Workspace and project organization
-- Task CRUD with priority, due dates, and assignees
-- React frontend with Tailwind + shadcn/ui
-- Node.js + PostgreSQL backend
-- Flutter mobile app with offline support
-- Docker + GitHub Actions CI/CD
-- Push notifications for task updates
-- English and Spanish localization
-```
+==================================================
+       Simple RAG Pipeline CLI
+==================================================
+Ingesting PDF: data/sample_rag_paper.pdf...
+Success: Ingested 5 chunks.
 
-The `project-manager` orchestrates the full team from there.
+Running query...
 
----
+--- Answer ---
+Based on the provided document:
+- Reduced Hallucination: Grounding answers in retrieved factual documents drastically lowers false claims.
+- Cost Efficiency: Updating domain knowledge requires simply updating the document collection or vector store...
 
-## 🏛️ Architecture Overview
-
-```mermaid
-flowchart TD
-    PM["🎯 project-manager"] --> WM["⚙️ workflow-manager"]
-    PM --> TA["📐 technical-architect"]
-    PM --> UX["🎨 uiux-lead"]
-    PM --> FL["🖥️ frontend-lead"]
-    PM --> BL["⚙️ backend-lead"]
-    PM --> DL["🗄️ data-lead"]
-    PM --> SL["🔒 security-lead"]
-    PM --> IM["🔀 integration-manager"]
-    PM --> QA["🧪 qa-lead"]
-    PM --> DR["🚀 devops-release-lead"]
-    PM --> ML["📱 mobile-lead"]
-    PM --> DA["📝 documentation-agent"]
-    PM --> CR["🔍 code-reviewer"]
-
-    UX --> MWW["mockup-wireframe-worker"]
-
-    FL --> UCW["ui-component-worker"]
-    FL --> RW["routing-worker"]
-    FL --> SMW["state-management-worker"]
-    FL --> AIW["api-integration-worker"]
-    FL --> FTW["frontend-test-worker"]
-    FL --> AW["accessibility-worker"]
-    FL --> PW["performance-worker"]
-    FL --> LW["localization-worker"]
-
-    BL --> ARW["api-route-worker"]
-    BL --> AUW["auth-worker"]
-    BL --> BLW["business-logic-worker"]
-    BL --> DAW["data-access-worker"]
-    BL --> BTW["backend-test-worker"]
-    BL --> EHW["error-handling-worker"]
-    BL --> ANW["analytics-worker"]
-
-    DL --> SDW["schema-design-worker"]
-    DL --> MW["migration-worker"]
-    DL --> SEW["seed-data-worker"]
-
-    QA --> UTW["unit-test-worker"]
-    QA --> ITW["integration-test-worker"]
-    QA --> RTW["regression-test-worker"]
-    QA --> E2E["browser-e2e-tester"]
-
-    DR --> CPW["ci-pipeline-worker"]
-    DR --> DW["docker-worker"]
-    DR --> RNW["release-notes-worker"]
-    DR -->|"BLOCKING ⛔ wait for PASS"| OW["observability-worker"]
-
-    ML --> MSW["mobile-screen-worker"]
-    ML --> PNW["push-notification-worker"]
+--- Retrieved Context ---
+[Chunk 1] 2. Benefits of RAG - Reduced Hallucination: Grounding answers in retrieved factual documents...
+[Chunk 2] Step 3: Embedding and Vector Storage - Converting chunks into dense vector representations...
 ```
 
----
-
-## 🤖 Agent Roster
-
-### Orchestration (2)
-
-| Agent | Model | Role | Skills |
-|---|---|---|---|
-| [`project-manager`](.agents/agents/project-manager/agent.md) | pro | Root entry point. Breaks down requirements, coordinates all leads, enforces phase gates, tracks milestones, manages blockers | software-project-management |
-| [`workflow-manager`](.agents/agents/workflow-manager/agent.md) | pro | Reads `.agents/workflows/*.json` and executes multi-phase pipelines with parallel streams, phase gates, and resumable state | software-project-management, git-integration |
-
----
-
-### Architecture & Design (3)
-
-| Agent | Model | Role | Skills |
-|---|---|---|---|
-| [`technical-architect`](.agents/agents/technical-architect/agent.md) | pro | Produces frozen `architecture.json`, `api-contract.json`, `ownership-map.json`. No implementation — contracts only | architecture-design |
-| [`uiux-lead`](.agents/agents/uiux-lead/agent.md) | pro | Design tokens, component specs, user journeys, responsive layouts, CSS framework selection, accessibility standards → `design-spec.md`. Delegates wireframes to `mockup-wireframe-worker` | uiux-design, frontend-development |
-| [`mockup-wireframe-worker`](.agents/agents/mockup-wireframe-worker/agent.md) | pro | UI wireframes, high-fidelity mockup generation, design inspiration research (Dribbble, Awwwards, Mobbin, Behance, Screenlane), screen specs per component | uiux-design |
-
----
-
-### Frontend Department (9)
-
-| Agent | Type | Model | Role | Skills |
-|---|---|---|---|---|
-| [`frontend-lead`](.agents/agents/frontend-lead/agent.md) | **Lead** | pro | Architects the frontend, defines component hierarchy and tooling, delegates ALL implementation to 8 workers | frontend-development, testing |
-| [`ui-component-worker`](.agents/agents/ui-component-worker/agent.md) | Worker | flash | Builds reusable design-system components (Button, Input, Modal, Card, Table, Badge, Toast) with WCAG AA | frontend-development |
-| [`routing-worker`](.agents/agents/routing-worker/agent.md) | Worker | flash | Client-side routing, auth guards, lazy loading, protected routes, breadcrumbs, deep links | frontend-development |
-| [`state-management-worker`](.agents/agents/state-management-worker/agent.md) | Worker | flash | Zustand/Redux stores, auth slice, async state, persistence middleware, selectors | frontend-development |
-| [`api-integration-worker`](.agents/agents/api-integration-worker/agent.md) | Worker | flash | Typed API client, React Query hooks, auth interceptors, error normalization, loading states | frontend-development |
-| [`frontend-test-worker`](.agents/agents/frontend-test-worker/agent.md) | Worker | flash | RTL unit + integration tests, custom hook tests, MSW API mocking, coverage ≥ 80% | frontend-development, testing |
-| [`accessibility-worker`](.agents/agents/accessibility-worker/agent.md) | Worker | flash | WCAG 2.1 AA audit and fixes — contrast, ARIA, keyboard navigation, focus management | frontend-development |
-| [`performance-worker`](.agents/agents/performance-worker/agent.md) | Worker | flash | Lighthouse audits, Core Web Vitals (LCP/CLS/INP), bundle analysis, code splitting, image optimization, list virtualization, formal performance report | performance-optimization, frontend-development, react-patterns |
-| [`localization-worker`](.agents/agents/localization-worker/agent.md) | Worker | flash | i18next setup, namespace design, string extraction, plural rules, RTL layout, Intl formatting (dates/numbers/currency), locale switcher | localization, frontend-development, flutter-development |
-
-**Lead enforces:** Workers are mandatory. `frontend-lead` only writes scaffolding (`package.json`, `vite.config.ts`, `App.tsx` routing shell).
-
----
-
-### Backend Department (8)
-
-| Agent | Type | Model | Role | Skills |
-|---|---|---|---|---|
-| [`backend-lead`](.agents/agents/backend-lead/agent.md) | **Lead** | pro | Architects the backend, defines module structure and middleware stack, delegates ALL implementation to 7 workers | backend-development, testing |
-| [`api-route-worker`](.agents/agents/api-route-worker/agent.md) | Worker | flash | Route controllers, request validation (Zod), response serialization, rate limiting | backend-development |
-| [`auth-worker`](.agents/agents/auth-worker/agent.md) | Worker | flash | JWT rotation, bcrypt/Argon2, refresh token storage, RBAC middleware, timing-safe comparisons | backend-development, security-review |
-| [`business-logic-worker`](.agents/agents/business-logic-worker/agent.md) | Worker | flash | Service layer, domain rules, transaction orchestration, domain events | backend-development |
-| [`data-access-worker`](.agents/agents/data-access-worker/agent.md) | Worker | flash | ORM models, repository pattern, N+1 prevention, cursor pagination, query optimization | backend-development, database-engineering |
-| [`backend-test-worker`](.agents/agents/backend-test-worker/agent.md) | Worker | flash | Service unit tests (mocked repos), API integration tests (Supertest + test DB), contract tests | backend-development, testing |
-| [`error-handling-worker`](.agents/agents/error-handling-worker/agent.md) | Worker | flash | Typed error hierarchy (`AppError` → `NotFoundError`…), global Express handler, structured error logging | backend-development |
-| [`analytics-worker`](.agents/agents/analytics-worker/agent.md) | Worker | flash | Event taxonomy design, SDK-agnostic analytics wrapper (PostHog/Mixpanel/Segment), PII scrubbing, GDPR consent, server-side tracking, funnel definitions, tracking plan documentation | analytics-tracking, backend-development, frontend-development |
-
-**Lead enforces:** Workers are mandatory. `backend-lead` only writes scaffolding (`package.json`, `tsconfig.json`, `app.ts` entry bootstrap).
-
----
-
-### Data Department (4)
-
-| Agent | Type | Model | Role | Skills |
-|---|---|---|---|---|
-| [`data-lead`](.agents/agents/data-lead/agent.md) | **Lead** | pro | Schema architecture, migration strategy, indexing decisions, integrity constraints | database-engineering, testing |
-| [`schema-design-worker`](.agents/agents/schema-design-worker/agent.md) | Worker | flash | DDL scripts — tables, columns, data types, PKs, FKs, unique constraints, enums, check constraints | database-engineering |
-| [`migration-worker`](.agents/agents/migration-worker/agent.md) | Worker | flash | Versioned UP/DOWN migrations, zero-downtime patterns (concurrent indexes, nullable-first), idempotency | database-engineering |
-| [`seed-data-worker`](.agents/agents/seed-data-worker/agent.md) | Worker | flash | Dev seeds (10–50 realistic records per entity), test fixtures (factory pattern, isolated per test) | database-engineering |
-
----
-
-### QA Department (5)
-
-| Agent | Type | Model | Role | Skills |
-|---|---|---|---|---|
-| [`qa-lead`](.agents/agents/qa-lead/agent.md) | **Lead** | pro | Test strategy, defect triage, coverage gating, formal sign-off authority — no release without QA pass | testing, code-review |
-| [`unit-test-worker`](.agents/agents/unit-test-worker/agent.md) | Worker | flash | Isolated unit tests — service methods, utilities, pure functions. AAA pattern, edge cases, ≥ 85% service coverage | testing |
-| [`integration-test-worker`](.agents/agents/integration-test-worker/agent.md) | Worker | flash | API endpoint tests (Supertest), contract tests against `api-contract.json`, auth flow tests | testing |
-| [`regression-test-worker`](.agents/agents/regression-test-worker/agent.md) | Worker | flash | Baseline comparison, flaky test detection, coverage delta between builds | testing |
-| [`browser-e2e-tester`](.agents/agents/browser-e2e-tester/agent.md) | Worker | pro | Playwright E2E — Chromium + Firefox + WebKit, user journeys, visual regression, responsive viewports | testing, frontend-development |
-
----
-
-### DevOps Department (5)
-
-| Agent | Type | Model | Role | Skills | Mode |
-|---|---|---|---|---|---|
-| [`devops-release-lead`](.agents/agents/devops-release-lead/agent.md) | **Lead** | pro | Pipeline design, release gating, semantic versioning, environment management | git-integration, devops-practices, testing | — |
-| [`ci-pipeline-worker`](.agents/agents/ci-pipeline-worker/agent.md) | Worker | flash | GitHub Actions — PR/main/release workflows, parallel jobs, caching, test DB services | git-integration | Parallel |
-| [`docker-worker`](.agents/agents/docker-worker/agent.md) | Worker | flash | Multi-stage Dockerfiles, non-root user, health checks, `.dockerignore`, docker-compose for dev | devops-practices | Parallel |
-| [`release-notes-worker`](.agents/agents/release-notes-worker/agent.md) | Worker | flash | Conventional Commits → CHANGELOG.md, Keep a Changelog format, migration guides | git-integration | Parallel |
-| [`observability-worker`](.agents/agents/observability-worker/agent.md) | Worker | flash | Sentry (FE + BE), Pino structured logging + PII redaction, `/health` + `/readiness` endpoints, Prometheus metrics, alerting rules, on-call runbook → `observability-report.json` | observability, backend-development, devops-practices | ⛔ **BLOCKING** |
-
-> [!IMPORTANT]
-> **`devops-release-lead` MUST invoke `observability-worker` and WAIT for `observability-report.json` `status: "PASS"` before tagging any release.** This is enforced in the agent definition and cannot be skipped.
-
----
-
-### Mobile Department (3)
-
-| Agent | Type | Model | Role | Skills |
-|---|---|---|---|---|
-| [`mobile-lead`](.agents/agents/mobile-lead/agent.md) | **Lead** | pro | Flutter/React Native architecture, screen hierarchy, offline-first strategy, API integration, device APIs, build pipeline | flutter-development, frontend-development, testing |
-| [`mobile-screen-worker`](.agents/agents/mobile-screen-worker/agent.md) | Worker | flash | Flutter/RN screens from design specs — navigation wiring, loading skeletons, empty states, platform conventions (iOS HIG / Material 3), safe area handling | flutter-development, frontend-development |
-| [`push-notification-worker`](.agents/agents/push-notification-worker/agent.md) | Worker | flash | Full FCM/APNs pipeline — device token registration + refresh, foreground/background/cold-start handling, Android channels, deep-link routing, in-app banner, server-side dispatch + stale token cleanup | mobile-notifications, flutter-development, backend-development |
-
----
-
-### Cross-Cutting (4)
-
-| Agent | Model | Role | Skills |
-|---|---|---|---|
-| [`security-lead`](.agents/agents/security-lead/agent.md) | pro | OWASP Top 10 audit, JWT/auth review, secret scanning, dependency CVEs — **mandatory release gate** | security-review, code-review |
-| [`integration-manager`](.agents/agents/integration-manager/agent.md) | pro | Merges parallel streams, audits ownership-map adherence, resolves conflicts, runs build verification | git-integration, code-review |
-| [`code-reviewer`](.agents/agents/code-reviewer/agent.md) | pro | Impartial code review — severity classification (Critical/Major/Minor), no silent edits | code-review, security-review |
-| [`documentation-agent`](.agents/agents/documentation-agent/agent.md) | flash | README, API docs, ADRs, developer setup guides, architecture diagrams | — |
-
----
-
-## 📚 Skills Library
-
-Skills are **on-demand knowledge guides** — the full content is only read when the agent needs it. Each skill contains real code examples, checklists, decision tables, and anti-patterns. Agents have mandatory `[!IMPORTANT]` instructions to read relevant skills before acting.
-
-### Existing Skills (15)
-
-| Skill | What It Teaches |
-|---|---|
-| [`backend-development`](.agents/skills/backend-development/SKILL.md) | Express modular architecture, CORS config, middleware order, Zod validation, rate limiting, asyncHandler, security headers |
-| [`frontend-development`](.agents/skills/frontend-development/SKILL.md) | React project structure, TypeScript strict, React Query, Zustand auth store, protected routes, WCAG AA, performance |
-| [`uiux-design`](.agents/skills/uiux-design/SKILL.md) | Design tokens, visual hierarchy, typography scale, color theory, 8pt grid, component specs, interaction design, CSS framework selection (Tailwind, shadcn/ui, CSS Modules, Styled Components, DaisyUI) |
-| [`flutter-development`](.agents/skills/flutter-development/SKILL.md) | Riverpod state management, GoRouter navigation, Dio API client, offline-first cache, secure storage, widget testing, release checklist |
-| [`database-engineering`](.agents/skills/database-engineering/SKILL.md) | Schema normalization, data types, migration patterns (zero-downtime), N+1 prevention, cursor pagination, data integrity constraints |
-| [`testing`](.agents/skills/testing/SKILL.md) | Test pyramid, AAA pattern, Supertest, RTL, MSW mocking, Playwright E2E, coverage targets per layer |
-| [`security-review`](.agents/skills/security-review/SKILL.md) | OWASP Top 10 checklist, JWT requirements, password hashing, SQL injection, XSS, secret scanning, dependency CVEs |
-| [`architecture-design`](.agents/skills/architecture-design/SKILL.md) | System layers, API-first design, ownership mapping, 12-factor app, ADR format, scalability patterns |
-| [`code-review`](.agents/skills/code-review/SKILL.md) | Severity classification, correctness/contract/security/performance/test coverage checklists, review report format |
-| [`git-integration`](.agents/skills/git-integration/SKILL.md) | Trunk-based branching, worktree isolation for parallel agents, conventional commits, conflict resolution protocol |
-| [`software-project-management`](.agents/skills/software-project-management/SKILL.md) | Task decomposition schema, phase gate criteria, parallel stream identification, blocker escalation |
-| [`react-patterns`](.agents/skills/react-patterns/SKILL.md) | Compound components, custom hooks, stale closure prevention, memoization guidelines, portals, context optimization |
-| [`api-design`](.agents/skills/api-design/SKILL.md) | REST resource naming, HTTP methods/status codes, response envelopes, pagination strategies, versioning, idempotency |
-| [`devops-practices`](.agents/skills/devops-practices/SKILL.md) | Docker multi-stage builds, GitHub Actions CI/CD, environment management, health checks, structured logging |
-| [`typescript-patterns`](.agents/skills/typescript-patterns/SKILL.md) | Strict mode, unknown vs any, discriminated unions, generics, Zod schema inference, type guards, typed error classes |
-
-### New Skills (5)
-
-| Skill | What It Teaches |
-|---|---|
-| [`performance-optimization`](.agents/skills/performance-optimization/SKILL.md) | Core Web Vitals budgets (LCP/CLS/INP/FCP/TTFB), Lighthouse CLI, JS bundle reduction (code splitting, tree shaking), React rendering optimization (useMemo/useCallback/memo), list virtualization (react-window), image optimization (WebP, explicit dimensions), HTTP caching strategy, resource hints (preload/preconnect), CLS prevention, performance report format |
-| [`analytics-tracking`](.agents/skills/analytics-tracking/SKILL.md) | Event taxonomy design (object_action naming), SDK-agnostic analytics service wrapper, PII scrubbing, GDPR/CCPA consent management, React hooks for tracking, automatic page view capture (React Router listener), server-side tracking (Node.js), funnel definitions, tracking plan documentation |
-| [`localization`](.agents/skills/localization/SKILL.md) | i18next + react-i18next setup, translation namespace design, string extraction workflow, plural rules (ICU format), Trans component for rich text, `Intl` API formatting (dates/numbers/currencies per locale), locale switcher with `document.dir` toggling, logical CSS properties for RTL, Flutter ARB files, localization quality checklist |
-| [`observability`](.agents/skills/observability/SKILL.md) | Three observability pillars (logs/metrics/traces), Sentry setup for backend + frontend with PII scrubbing, Pino structured JSON logging with field redaction, `/health` (liveness) and `/readiness` (deep check) endpoint design, request ID tracing middleware, Prometheus metrics (counter + histogram), alerting rules (critical vs warning), on-call runbook template, `observability-report.json` sign-off format |
-| [`mobile-notifications`](.agents/skills/mobile-notifications/SKILL.md) | FCM/APNs architecture, `firebase_messaging` + `flutter_local_notifications` setup, permission request UX (explain-before-asking), foreground/background/cold-start handling, notification payload design, deep-link routing from notifications, Android notification channels with importance levels, server-side dispatch with stale token cleanup, in-app notification banner, common mistakes checklist |
-
----
-
-## ⚡ Workflows
-
-Pre-built workflow definitions that `workflow-manager` executes with phase gates and parallel stream coordination:
-
-| Workflow | Phases | Description |
-|---|---|---|
-| [`software-project`](.agents/workflows/software-project.json) | 6 | Planning → Architecture → Parallel Implementation → Integration → QA+Security → Release |
-| [`parallel-feature-development`](.agents/workflows/parallel-feature-development.json) | 3 | Parallel streams (backend/frontend/DB/security) → integration sync → validation |
-| [`integration-and-release`](.agents/workflows/integration-and-release.json) | 5 | Harmonize → Build verify → E2E → Security gate → Release |
-
-**How to trigger a workflow:**
-```
-Tell workflow-manager to execute the "software-project" workflow for:
-[your full project requirements]
-```
-
----
-
-## 📖 How to Use
-
-### Build a full project (recommended)
-
-Talk to `project-manager`:
-
-```
-I want to build a multi-tenant SaaS app:
-- Node.js + Express + PostgreSQL backend
-- React + TypeScript + Tailwind + shadcn/ui frontend
-- Flutter mobile app (iOS + Android)
-- JWT auth with refresh token rotation
-- Organizations, workspaces, members, and roles
-- Stripe billing integration
-- Push notifications for activity updates
-- English + Spanish localization
-- Docker + GitHub Actions CI/CD
-- Sentry error tracking + Pino logs + /health + /readiness
-```
-
-The manager will ask clarifying questions, then orchestrate the full team.
-
----
-
-### Run a structured pipeline
-
-```
-Tell workflow-manager to run the "software-project" workflow for:
-A task management app with Express/PostgreSQL backend and React/Vite frontend
-```
-
----
-
-### Invoke a specific lead directly
-
-```
-Tell frontend-lead to implement the dashboard module
-following the design-spec.md and api-contract.json that already exist.
-```
-
-```
-Tell uiux-lead to produce a complete design-spec.md for
-a dashboard with Tailwind + shadcn/ui, dark mode support,
-and mobile-first responsive layout.
-```
-
-```
-Tell mobile-lead to build the Flutter mobile app for iOS and Android
-using the api-contract.json endpoints, with offline support and
-push notifications for order updates.
-```
-
-```
-Tell devops-release-lead to set up the full CI/CD + observability stack:
-GitHub Actions, Docker multi-stage build, Sentry, Pino logging,
-health endpoints, Prometheus metrics, and alerting rules.
-```
-
----
-
-### Invoke a specific worker directly
-
-```
-Tell mockup-wireframe-worker to:
-1. Research UI inspiration for a SaaS dashboard on Dribbble and Awwwards
-2. Generate wireframes for: login, dashboard, item list, item detail, settings
-3. Create high-fidelity mockups for desktop and mobile viewports
-4. Use a modern minimal style similar to Linear or Vercel
-```
-
-```
-Tell performance-worker to audit the frontend app at http://localhost:3000
-and optimize it to meet: LCP ≤ 2.5s, INP ≤ 200ms, CLS ≤ 0.1, bundle ≤ 200KB
-```
-
-```
-Tell analytics-worker to implement product analytics using PostHog:
-- Event taxonomy for auth, onboarding, and core feature flows
-- React hook for component-level tracking
-- Automatic page view tracking
-- Server-side tracking for payment events
-- Full tracking plan documentation
-- GDPR consent management
-```
-
-```
-Tell localization-worker to add i18n support for English and Arabic (RTL):
-- Set up i18next with namespace design
-- Extract all hardcoded strings in frontend/src
-- Implement locale switcher with document.dir toggling
-- Add Intl-based date/number/currency formatting
-```
-
-```
-Tell observability-worker to instrument the full stack:
-- Sentry for frontend and backend error tracking
-- Pino structured JSON logging
-- /health and /readiness endpoints
-- Prometheus metrics
-- Alert rules for Slack
-- On-call runbook
-Return the observability-report.json when done.
-```
-
-```
-Tell push-notification-worker to implement the full notification pipeline:
-- FCM setup for Android + APNs for iOS
-- Notification types: order_update, message, alert, promo
-- Deep links routing to the correct screen for each type
-- Server-side dispatch with stale token cleanup
-- In-app notification banner for foreground state
-```
-
----
-
-## 📁 Project Structure
-
-```
-.agents/
-│
-├── agents/                          # 43 agent definitions
-│   │
-│   ├── project-manager/             # ─┐
-│   ├── workflow-manager/            #  ├─ Orchestration (2)
-│   │
-│   ├── technical-architect/         # ─┐
-│   ├── uiux-lead/                   #  ├─ Architecture & Design (3)
-│   ├── mockup-wireframe-worker/     # ─┘
-│   │
-│   ├── frontend-lead/               # ─┐
-│   ├── ui-component-worker/         #  │
-│   ├── routing-worker/              #  │
-│   ├── state-management-worker/     #  ├─ Frontend Dept. (9)
-│   ├── api-integration-worker/      #  │
-│   ├── frontend-test-worker/        #  │
-│   ├── accessibility-worker/        #  │
-│   ├── performance-worker/          #  │  ← NEW
-│   ├── localization-worker/         # ─┘  ← NEW
-│   │
-│   ├── backend-lead/                # ─┐
-│   ├── api-route-worker/            #  │
-│   ├── auth-worker/                 #  │
-│   ├── business-logic-worker/       #  ├─ Backend Dept. (8)
-│   ├── data-access-worker/          #  │
-│   ├── backend-test-worker/         #  │
-│   ├── error-handling-worker/       #  │
-│   ├── analytics-worker/            # ─┘  ← NEW
-│   │
-│   ├── data-lead/                   # ─┐
-│   ├── schema-design-worker/        #  ├─ Data Dept. (4)
-│   ├── migration-worker/            #  │
-│   ├── seed-data-worker/            # ─┘
-│   │
-│   ├── qa-lead/                     # ─┐
-│   ├── unit-test-worker/            #  │
-│   ├── integration-test-worker/     #  ├─ QA Dept. (5)
-│   ├── regression-test-worker/      #  │
-│   ├── browser-e2e-tester/          # ─┘
-│   │
-│   ├── devops-release-lead/         # ─┐
-│   ├── ci-pipeline-worker/          #  │
-│   ├── docker-worker/               #  ├─ DevOps Dept. (5)
-│   ├── release-notes-worker/        #  │
-│   ├── observability-worker/        # ─┘  ← NEW (BLOCKING)
-│   │
-│   ├── mobile-lead/                 # ─┐
-│   ├── mobile-screen-worker/        #  ├─ Mobile Dept. (3)  ← NEW
-│   ├── push-notification-worker/    # ─┘  ← NEW
-│   │
-│   ├── security-lead/               # ─┐
-│   ├── integration-manager/         #  │
-│   ├── code-reviewer/               #  ├─ Cross-cutting (4)
-│   └── documentation-agent/         # ─┘
-│
-├── skills/                          # 20 rich knowledge guides
-│   │
-│   ├── backend-development/         # Express, Zod, rate limiting, security headers
-│   ├── frontend-development/        # React, TypeScript, React Query, Zustand, a11y
-│   ├── uiux-design/                 # Tokens, typography, 8pt grid, CSS framework guide
-│   ├── flutter-development/         # Riverpod, GoRouter, Dio, offline, testing
-│   ├── database-engineering/        # Schema, migrations, N+1, cursor pagination
-│   ├── testing/                     # Pyramid, Supertest, RTL, MSW, Playwright
-│   ├── security-review/             # OWASP Top 10, JWT, secrets, CVEs
-│   ├── architecture-design/         # Layers, API-first, ADRs, 12-factor
-│   ├── code-review/                 # Severity classification, checklists
-│   ├── git-integration/             # Trunk-based, conventional commits, worktrees
-│   ├── software-project-management/ # Task decomposition, phase gates, blockers
-│   ├── react-patterns/              # Hooks, memoization, compound components
-│   ├── api-design/                  # REST naming, status codes, pagination
-│   ├── devops-practices/            # Docker, GitHub Actions, health checks
-│   ├── typescript-patterns/         # Strict mode, Zod, discriminated unions
-│   │
-│   ├── performance-optimization/    # ← NEW: Core Web Vitals, Lighthouse, bundle analysis
-│   ├── analytics-tracking/          # ← NEW: Event taxonomy, SDK wrapper, PII, consent
-│   ├── localization/                # ← NEW: i18next, RTL, Intl API, Flutter ARB
-│   ├── observability/               # ← NEW: Sentry, Pino, health endpoints, Prometheus
-│   └── mobile-notifications/        # ← NEW: FCM/APNs, channels, deep links, payloads
-│
-├── workflows/                       # Structured delivery pipelines
-│   ├── software-project.json
-│   ├── parallel-feature-development.json
-│   └── integration-and-release.json
-│
-├── schemas/                         # JSON validation schemas
-│   ├── api-contract.schema.json
-│   ├── architecture.schema.json
-│   ├── ownership-map.schema.json
-│   ├── project-plan.schema.json
-│   ├── qa-report.schema.json
-│   ├── release-report.schema.json
-│   └── task.schema.json
-│
-└── registry/
-    └── agent-registry.json          # Master index — v2.3.0, 43 agents, 20 skills
-```
-
----
-
-## 🔗 How Agents Communicate
-
-### Tool-level controls (enforced in agent definitions)
-
-| Agent Type | `invoke_subagent` | `send_message` | Tools count |
-|---|---|---|---|
-| **Orchestrator** (`project-manager`, `workflow-manager`) | ✅ Yes | ✅ Yes | 11 tools |
-| **Lead** (`frontend-lead`, `mobile-lead`, …) | ✅ Yes | ✅ Yes | 10 tools |
-| **Worker** (`ui-component-worker`, `auth-worker`, …) | ❌ No | ❌ No | 5–7 tools |
-| **Design agents** (`uiux-lead`, `technical-architect`) | ✅ (uiux only) | ✅ Yes | 6–9 tools |
-
-### Communication flows
-
-```
-project-manager
-  ├── invoke_subagent → frontend-lead     (spawns it)
-  └── send_message   → frontend-lead     (mid-stream instruction update)
-
-frontend-lead
-  ├── invoke_subagent → [ui-component-worker, routing-worker, …]  (parallel batch)
-  └── send_message   → uiux-lead         (ask for design clarification)
-
-Worker
-  └── returns files + handoff message → frontend-lead  (no direct peer communication)
-```
-
-### Phase gate enforcement
-
-Leads and `workflow-manager` check for required artifacts before advancing:
-
-```
-Gate: Architecture → Implementation
-Requires: architecture.json + api-contract.json + ownership-map.json + design-spec.md
-
-Gate: Implementation → Integration
-Requires: all lead handoff reports
-
-Gate: Integration → QA
-Requires: integration-report.json with build status PASS
-
-Gate: QA → Observability
-Requires: qa-report.json PASS + security-lead sign-off
-
-Gate: Observability → Release   ← BLOCKING
-Requires: observability-report.json { status: "PASS" }
-```
-
----
-
-## 🔒 Release Gate System
-
-The release process has **four mandatory gates** before a version tag is applied:
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   RELEASE GATES                     │
-│                                                     │
-│  1. ✅ qa-report.json          status: "PASS"       │
-│  2. ✅ security-lead sign-off  (explicit approval)  │
-│  3. ⛔ observability-report.json status: "PASS"     │
-│        └─ devops-release-lead WAITS for this        │
-│           before proceeding — cannot be skipped     │
-│  4. ✅ All CI/Docker/changelog workers complete      │
-│                                                     │
-│     → Apply semantic version bump                   │
-│     → Tag git commit                                │
-│     → Write release-report.json                    │
-└─────────────────────────────────────────────────────┘
-```
-
-The **observability gate** specifically enforces:
-- Sentry error tracking configured for both backend and frontend
-- PII stripped from all error reports and logs
-- `/health` and `/readiness` endpoints live and tested
-- Prometheus metrics endpoint configured
-- Alerting rules documented (critical + warning thresholds)
-- On-call runbook written for each critical alert type
-
----
-
-## ⚡ Token Usage — How to Keep It Efficient
-
-| Strategy | Impact | How It Works Here |
-|---|---|---|
-| **Workers use `flash` model** | ~4× cheaper per call | 29 of 43 agents are `model: flash` |
-| **Narrow tool lists** | Fewer tokens describing unused tools | Workers have 5–7 tools, orchestrators have 11 |
-| **Skills load on demand** | Not loaded unless needed | Progressive disclosure — only name/description in context by default |
-| **Parallel streams** | Less total time = less context drift | `invoke_subagent` batches launch simultaneously |
-| **Leads don't write code** | Lead context stays small | Leads only scaffold + coordinate |
-| **Workflow phases are discrete** | Each phase context resets | `workflow-manager` advances phase-by-phase |
-| **Workers report, don't explain** | Compact output | Workers produce files + a short handoff report |
-
-**What to avoid:**
-- Don't ask `project-manager` to also write code — it should always delegate
-- Don't read entire large files when you only need a section — use `grep_search`
-- Don't run sequential worker calls when they can be parallel — check if tasks depend on each other
-- Don't invoke `observability-worker` without waiting for its return — it must be blocking
-
----
-
-## ➕ Adding New Agents
-
-1. Create `.agents/agents/<name>/agent.md`
-2. Add correct frontmatter:
-
-```yaml
----
-name: graphql-worker
-description: Implements GraphQL schema, resolvers, and subscriptions per the API contract. Works under backend-lead.
-model: flash          # flash for workers, pro for leads/orchestrators
-mainAgent: false      # true = appears in /agents UI
-subagent: true        # true = invokable via invoke_subagent
-tools:
-  - view_file
-  - write_to_file
-  - replace_file_content
-  - list_dir
-  - grep_search
-  - run_command
-  # Workers do NOT get invoke_subagent or manage_subagents
-skills:
-  - backend-development
-  - api-design
----
-
-# GraphQL Worker
-
-> [!IMPORTANT]
-> **Read your skills FIRST before writing any code.**
-> - Read `.agents/skills/backend-development/SKILL.md` — middleware, validation, error handling
-> - Read `.agents/skills/api-design/SKILL.md` — resource naming, response envelopes
-
-## ROLE
-...
-
-## INPUT CONTRACT
-Receives from `backend-lead`:
-...
-
-## OUTPUT CONTRACT
-Delivers to `backend-lead`:
-...
-```
-
-3. Add to `agent-registry.json` with correct `parent` and `skills` fields
-4. Add `invoke_subagent` reference in the parent lead's **WORKER DELEGATION GUIDE** table
-5. Update the parent lead's `workers: [...]` array in the registry
-
-> **Tip:** Use `agent-template-builder` (available in Antigravity) to auto-generate new agents from a natural-language description.
-
----
-
-## 📝 Adding New Skills
-
-1. Create `.agents/skills/<name>/SKILL.md`:
-
-```yaml
----
-name: graphql-patterns
-description: GraphQL schema design, resolver patterns, subscriptions, DataLoader N+1 prevention, and code-first vs schema-first approaches.
----
-
-# GraphQL Patterns Skill
-
-[rich content with real code examples, patterns, decision tables, checklists...]
-```
-
-2. Reference in the relevant agents' frontmatter:
-```yaml
-skills:
-  - graphql-patterns
-  - backend-development
-```
-
-3. Add a mandatory read instruction in those agents' body:
-```markdown
-> [!IMPORTANT]
-> **Read your skills FIRST.**
-> - Read `.agents/skills/graphql-patterns/SKILL.md` — schema design, resolvers, DataLoader, N+1 prevention
-```
-
-**Skills are most effective when they contain:**
-- Real code examples (not pseudocode) — copy-paste ready
-- Checklists for common mistakes
-- Decision tables ("when to use X vs Y")
-- Anti-patterns with clear explanations of why they're bad
-- A quality checklist the agent runs before delivering output
-
----
-
-## 🤝 Contributing
-
-PRs are welcome! Ideas for new agents and skills:
-
-**New workers:**
-- `graphql-worker` — GraphQL schema, resolvers, subscriptions, DataLoader
-- `redis-worker` — caching strategy, session storage, pub/sub
-- `websocket-worker` — Socket.io or native WS server, room management
-- `openapi-worker` — OpenAPI 3.1 spec generation from api-contract.json
-- `stripe-worker` — Stripe Checkout, webhooks, subscription lifecycle
-
-**New skills:**
-- `graphql-patterns` — schema-first vs code-first, DataLoader, subscriptions
-- `caching-strategy` — Redis patterns, CDN, HTTP cache headers, stale-while-revalidate
-- `real-time-patterns` — WebSocket, SSE, polling tradeoffs, backpressure
-
-**New workflows:**
-- `hotfix-pipeline` — emergency fix → test → release without full cycle
-- `security-audit` — security-only audit pipeline
-- `mobile-release` — app store submission pipeline
-
-### Contribution guide
-
+### 3. Run the Interactive Streamlit Chatbot Dashboard
 ```bash
-git checkout -b feat/add-graphql-worker
-# create agent + skill files
-git add .agents/
-git commit -m "feat(agents): add graphql-worker with DataLoader and subscription support"
-git push origin feat/add-graphql-worker
-# open PR
+streamlit run src/app_streamlit.py
 ```
+*Or double click [`run_streamlit.bat`](file:///C:/Users/Tulasi%20S/OneDrive/Desktop/rag/run_streamlit.bat) on Windows.*
 
-Follow **Conventional Commits** — the `release-notes-worker` depends on it for changelog generation.
+**Dashboard & Chatbot Features:**
+- **🎙️ Built-in Voice Assistant**:
+  - **🔊 Text-to-Speech (TTS)**: Click "Listen to Answer" to hear responses read aloud using natural browser speech synthesis, with adjustable speed, pitch, and an optional auto-speak mode.
+  - **🎤 Speech-to-Text (STT)**: Dictate questions directly into the chatbot using your microphone with the "Speak Question" button.
+- **✨ Clean Formatting with Emojis & Bullet Points**: Responses are structured with direct takeaway blockquotes (🎯), key points highlighted in bold with emojis (🔹, 🚀, 🛡️, ⚙️), and actionable summaries (💡).
+- **💬 Conversational Chatbot**: Familiar ChatGPT-style interface with user/assistant avatars, streaming typewriter token generation, and persistent conversation history.
+- **📚 Multi-Document Knowledge Hub**: Ingest multiple files simultaneously (`.pdf`, `.txt`, `.md`, `.csv`, `.docx`), paste raw text directly, or load the built-in sample paper with 1 click.
+- **📊 Live System Metrics**: Real-time stats showing documents indexed, total vector chunks, active embedding model, and generator status.
+- **🔍 Interactive Citations & Context Inspector**: Expandable source inspection cards beneath each response showing source document, page number, cosine distance, and exact excerpt.
+- **💡 Suggested Question Pills**: 1-click prompt pills for instant summaries, benefits, step breakdowns, and fact-checking.
+- **💾 Session Controls**: Clear chat history, reset vector database, or export entire conversations to Markdown.
+- **⚙️ Backend Model Switcher**: Seamlessly switch between local offline synthesizer, Hugging Face, Gemini API, or OpenAI GPT.
+
+---
+
+## 🧪 Running Automated Tests
+
+Run the full test suite using Python's built-in `unittest`:
+```bash
+python tests/run_all_tests.py
+```
+All unit tests and integration tests will execute, covering:
+- PDF reading & text extraction
+- Text chunking & overlap integrity
+- ChromaDB vector store upsert & top-k retrieval
+- Modular LLM prompt building & generator fallback
+- End-to-end RAG pipeline ingest and query flow
+
+---
+
+## ⚙️ Modular Generation Providers
+
+The `ModularGenerator` supports 4 backends:
+1. **`fallback` (Default)**: Fast, zero-dependency local extractive synthesizer that matches query terms to the retrieved context. Requires no GPU, network, or external API keys.
+2. **`huggingface`**: Uses local Hugging Face `transformers` pipeline (e.g. `google/flan-t5-base`).
+3. **`gemini`**: Calls Google Gemini API when `GEMINI_API_KEY` is present.
+4. **`openai`**: Calls OpenAI API when `OPENAI_API_KEY` is present.
 
 ---
 
 ## 📄 License
-
-MIT — free to use, modify, and build on.
-
----
-
-*Registry: v2.3.0 · 43 agents · 20 skills · 3 workflows*
-
+MIT License.

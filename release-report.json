@@ -1,0 +1,42 @@
+{
+  "$schema": "./.agents/schemas/release-report.schema.json",
+  "releaseId": "REL-v1.0.0",
+  "version": "1.0.0",
+  "status": "ready",
+  "buildArtifacts": [
+    "src/rag_pipeline/pdf_reader.py",
+    "src/rag_pipeline/chunker.py",
+    "src/rag_pipeline/vector_store.py",
+    "src/rag_pipeline/generator.py",
+    "src/rag_pipeline/pipeline.py",
+    "src/rag_pipeline/config.py",
+    "src/rag_pipeline/__init__.py",
+    "src/cli.py",
+    "src/app_streamlit.py",
+    "src/create_sample_pdf.py",
+    "tests/test_chunker.py",
+    "tests/test_vector_store.py",
+    "tests/test_generator.py",
+    "tests/test_pipeline.py",
+    "tests/run_all_tests.py",
+    "requirements.txt",
+    ".env.example",
+    "run_cli.bat",
+    "run_streamlit.bat",
+    "README.md"
+  ],
+  "changelog": [
+    "Step 1: Implemented PDFReader with page-by-page extraction and whitespace cleaning",
+    "Step 2: Implemented TextChunker with configurable sliding window and word-boundary overlap",
+    "Step 3: Integrated ChromaDB vector store with sentence-transformers/all-MiniLM-L6-v2 embedding model",
+    "Step 4: Implemented interactive CLI and Streamlit Web UI with context inspection",
+    "Step 5: Implemented query embedding and top-k nearest neighbor retrieval via ChromaDB",
+    "Step 6: Implemented ModularGenerator with local fallback, HuggingFace, Gemini, and OpenAI backends",
+    "Full test suite, integration report, and security sign-off completed"
+  ],
+  "signOff": {
+    "qaApproved": true,
+    "securityApproved": true,
+    "integrationApproved": true
+  }
+}

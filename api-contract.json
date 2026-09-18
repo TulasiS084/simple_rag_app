@@ -1,0 +1,51 @@
+{
+  "apiName": "Simple RAG Pipeline Internal API",
+  "version": "1.0.0",
+  "endpoints": [
+    {
+      "path": "/api/v1/ingest",
+      "method": "POST",
+      "description": "Ingests a PDF file, chunks it, and stores embeddings in ChromaDB",
+      "request": {
+        "type": "object",
+        "properties": {
+          "file_path": { "type": "string" },
+          "chunk_size": { "type": "integer", "default": 500 },
+          "chunk_overlap": { "type": "integer", "default": 50 }
+        },
+        "required": ["file_path"]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "chunks_processed": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "path": "/api/v1/query",
+      "method": "POST",
+      "description": "Queries the pipeline with user text and returns LLM generated response based on context",
+      "request": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" },
+          "top_k": { "type": "integer", "default": 3 },
+          "model_type": { "type": "string", "enum": ["local", "gemini", "openai", "fallback"] }
+        },
+        "required": ["query"]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "response": { "type": "string" },
+          "context_chunks": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  ]
+}

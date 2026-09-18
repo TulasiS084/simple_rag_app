@@ -1,0 +1,323 @@
+{
+  "$schema": "./.agents/schemas/project-plan.schema.json",
+  "projectId": "rag-pipeline-v1",
+  "projectName": "Simple RAG Pipeline",
+  "version": "1.0.0",
+  "status": "completed",
+  "milestones": [
+    {
+      "milestoneId": "M1",
+      "title": "Discovery & Architecture",
+      "targetDate": "2026-09-18",
+      "status": "done",
+      "deliverables": [
+        "project-plan.json",
+        "milestones.json",
+        "architecture.json",
+        "api-contract.json",
+        "ownership-map.json"
+      ]
+    },
+    {
+      "milestoneId": "M2",
+      "title": "Core Implementation (RAG Engine, Vector Store, CLI, UI)",
+      "targetDate": "2026-09-18",
+      "status": "done",
+      "deliverables": [
+        "src/rag_pipeline/pdf_reader.py",
+        "src/rag_pipeline/chunker.py",
+        "src/rag_pipeline/vector_store.py",
+        "src/rag_pipeline/generator.py",
+        "src/rag_pipeline/pipeline.py",
+        "src/cli.py",
+        "src/app_streamlit.py"
+      ]
+    },
+    {
+      "milestoneId": "M3",
+      "title": "Integration & Verification",
+      "targetDate": "2026-09-18",
+      "status": "done",
+      "deliverables": [
+        "integration-report.json",
+        "qa-report.json",
+        "security-audit.json"
+      ]
+    },
+    {
+      "milestoneId": "M4",
+      "title": "Documentation & Release",
+      "targetDate": "2026-09-18",
+      "status": "done",
+      "deliverables": [
+        "README.md",
+        "release-report.json"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "taskId": "TASK-001",
+      "parentTaskId": null,
+      "owner": "technical-architect",
+      "goal": "Define end-to-end system architecture, API contracts, module boundaries, and file ownership map for Simple RAG Pipeline",
+      "status": "done",
+      "inputs": [
+        "User specifications: PDF ingestion, chunking, all-MiniLM-L6-v2 embedding, ChromaDB vector store, top-k retrieval, modular LLM generation, CLI, and Streamlit UI"
+      ],
+      "outputs": [
+        "architecture.json",
+        "api-contract.json",
+        "ownership-map.json"
+      ],
+      "dependencies": [],
+      "filesOrAreaOwned": [
+        "architecture.json",
+        "api-contract.json",
+        "ownership-map.json"
+      ],
+      "acceptanceCriteria": [
+        "architecture.json defines components: PDF Reader, Chunker, Embedder (all-MiniLM-L6-v2), VectorStore (ChromaDB), Query Engine, Generator (modular local/cloud LLM), CLI, Streamlit UI",
+        "api-contract.json defines public function signatures, data contracts, and REST/CLI/UI schemas",
+        "ownership-map.json sets strict file and directory ownership boundaries without overlaps"
+      ]
+    },
+    {
+      "taskId": "TASK-002",
+      "parentTaskId": null,
+      "owner": "data-lead",
+      "goal": "Implement PDF ingestion, text extraction, text chunking, and ChromaDB vector store integration with sentence-transformers/all-MiniLM-L6-v2",
+      "status": "done",
+      "inputs": [
+        "architecture.json",
+        "ownership-map.json"
+      ],
+      "outputs": [
+        "src/rag_pipeline/pdf_reader.py",
+        "src/rag_pipeline/chunker.py",
+        "src/rag_pipeline/vector_store.py"
+      ],
+      "dependencies": [
+        "TASK-001"
+      ],
+      "filesOrAreaOwned": [
+        "src/rag_pipeline/pdf_reader.py",
+        "src/rag_pipeline/chunker.py",
+        "src/rag_pipeline/vector_store.py"
+      ],
+      "acceptanceCriteria": [
+        "Extract text cleanly from input PDF files",
+        "Chunk text with configurable chunk size and overlap",
+        "Embed chunks using sentence-transformers/all-MiniLM-L6-v2",
+        "Store chunks and embeddings in persistent or in-memory ChromaDB collection",
+        "Provide query method returning top-k nearest chunks with metadata and scores"
+      ]
+    },
+    {
+      "taskId": "TASK-003",
+      "parentTaskId": null,
+      "owner": "backend-lead",
+      "goal": "Implement modular LLM generator (local Hugging Face / Transformers, mock/fallback, and optional API key support) and main RAG orchestrator pipeline",
+      "status": "done",
+      "inputs": [
+        "architecture.json",
+        "api-contract.json",
+        "ownership-map.json"
+      ],
+      "outputs": [
+        "src/rag_pipeline/generator.py",
+        "src/rag_pipeline/pipeline.py",
+        "src/rag_pipeline/__init__.py",
+        "src/rag_pipeline/config.py"
+      ],
+      "dependencies": [
+        "TASK-001",
+        "TASK-002"
+      ],
+      "filesOrAreaOwned": [
+        "src/rag_pipeline/generator.py",
+        "src/rag_pipeline/pipeline.py",
+        "src/rag_pipeline/__init__.py",
+        "src/rag_pipeline/config.py"
+      ],
+      "acceptanceCriteria": [
+        "Modular generator class supporting pluggable backends (HuggingFace transformer pipeline, Gemini/OpenAI API, and local template fallback)",
+        "Construct prompt combining query and top-k context chunks",
+        "Pipeline orchestrates ingest(pdf_path) and query(user_query, top_k) seamlessly"
+      ]
+    },
+    {
+      "taskId": "TASK-004",
+      "parentTaskId": null,
+      "owner": "frontend-lead",
+      "goal": "Build interactive CLI interface and Streamlit Web application for PDF upload, query input, top-k chunks inspection, and generated answer display",
+      "status": "done",
+      "inputs": [
+        "architecture.json",
+        "api-contract.json",
+        "ownership-map.json"
+      ],
+      "outputs": [
+        "src/cli.py",
+        "src/app_streamlit.py"
+      ],
+      "dependencies": [
+        "TASK-001",
+        "TASK-003"
+      ],
+      "filesOrAreaOwned": [
+        "src/cli.py",
+        "src/app_streamlit.py"
+      ],
+      "acceptanceCriteria": [
+        "CLI provides interactive command prompt allowing user to specify PDF path, index it, and ask queries in an interactive loop",
+        "Streamlit UI provides file uploader, query input box, response view, and context chunks expander",
+        "Clear status indicators for ingestion and generation"
+      ]
+    },
+    {
+      "taskId": "TASK-005",
+      "parentTaskId": null,
+      "owner": "integration-manager",
+      "goal": "Integrate data pipeline, backend engine, CLI, and Streamlit UI; ensure clean module imports and sample PDF run",
+      "status": "done",
+      "inputs": [
+        "architecture.json",
+        "ownership-map.json",
+        "src/"
+      ],
+      "outputs": [
+        "integration-report.json"
+      ],
+      "dependencies": [
+        "TASK-002",
+        "TASK-003",
+        "TASK-004"
+      ],
+      "filesOrAreaOwned": [
+        "integration-report.json"
+      ],
+      "acceptanceCriteria": [
+        "All components integrate cleanly without import errors",
+        "End-to-end smoke test succeeds on sample document",
+        "integration-report.json produced with status PASS"
+      ]
+    },
+    {
+      "taskId": "TASK-006",
+      "parentTaskId": null,
+      "owner": "qa-lead",
+      "goal": "Design and execute automated unit, integration, and contract tests for the RAG pipeline",
+      "status": "done",
+      "inputs": [
+        "src/",
+        "api-contract.json"
+      ],
+      "outputs": [
+        "tests/",
+        "qa-report.json"
+      ],
+      "dependencies": [
+        "TASK-005"
+      ],
+      "filesOrAreaOwned": [
+        "tests/",
+        "qa-report.json"
+      ],
+      "acceptanceCriteria": [
+        "Unit tests for PDF reading, chunking, embedding, vector store retrieval, generator, and pipeline",
+        "All tests pass with high test coverage",
+        "qa-report.json produced with status PASS"
+      ]
+    },
+    {
+      "taskId": "TASK-007",
+      "parentTaskId": null,
+      "owner": "security-lead",
+      "goal": "Audit RAG pipeline for security concerns (untrusted PDF parsing, prompt injection handling, environment variable protection, dependency hygiene)",
+      "status": "done",
+      "inputs": [
+        "src/",
+        "requirements.txt"
+      ],
+      "outputs": [
+        "security-audit.json"
+      ],
+      "dependencies": [
+        "TASK-005"
+      ],
+      "filesOrAreaOwned": [
+        "security-audit.json"
+      ],
+      "acceptanceCriteria": [
+        "Safe file path handling and PDF parsing limits",
+        "Prompt sanitization and context truncation safeguards",
+        "No hardcoded secrets or sensitive tokens in codebase",
+        "Formal security sign-off issued"
+      ]
+    },
+    {
+      "taskId": "TASK-008",
+      "parentTaskId": null,
+      "owner": "documentation-agent",
+      "goal": "Create comprehensive documentation, usage examples, architecture overview, and setup guide",
+      "status": "done",
+      "inputs": [
+        "architecture.json",
+        "src/",
+        "qa-report.json"
+      ],
+      "outputs": [
+        "README.md",
+        "docs/"
+      ],
+      "dependencies": [
+        "TASK-006",
+        "TASK-007"
+      ],
+      "filesOrAreaOwned": [
+        "README.md",
+        "docs/"
+      ],
+      "acceptanceCriteria": [
+        "Step-by-step instructions for installing requirements and running CLI and Streamlit UI",
+        "Sample walkthrough with commands and sample query output",
+        "Architecture diagram and component breakdown"
+      ]
+    },
+    {
+      "taskId": "TASK-009",
+      "parentTaskId": null,
+      "owner": "devops-release-lead",
+      "goal": "Provide packaging, requirements.txt, environment setup (.env.example), run scripts, and release report",
+      "status": "done",
+      "inputs": [
+        "src/",
+        "tests/",
+        "README.md"
+      ],
+      "outputs": [
+        "requirements.txt",
+        ".env.example",
+        "run_cli.bat",
+        "run_streamlit.bat",
+        "release-report.json"
+      ],
+      "dependencies": [
+        "TASK-008"
+      ],
+      "filesOrAreaOwned": [
+        "requirements.txt",
+        ".env.example",
+        "run_cli.bat",
+        "run_streamlit.bat",
+        "release-report.json"
+      ],
+      "acceptanceCriteria": [
+        "Pinned or bounded dependencies in requirements.txt",
+        "Ready-to-run batch scripts for Windows",
+        "release-report.json confirming release readiness"
+      ]
+    }
+  ]
+}

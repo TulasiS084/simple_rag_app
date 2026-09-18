@@ -1,0 +1,73 @@
+{
+  "systemName": "Simple RAG Pipeline",
+  "version": "1.0.0",
+  "techStack": {
+    "backend": "Python 3.10+, sentence-transformers (all-MiniLM-L6-v2), transformers",
+    "frontend": "Streamlit, CLI (argparse/click)",
+    "database": "ChromaDB",
+    "runtime": "Local Python Environment"
+  },
+  "serviceBoundaries": [
+    {
+      "service": "Data Ingestion",
+      "owner": "data-lead",
+      "responsibility": "Read PDFs, extract text, chunk data, embed and store in ChromaDB"
+    },
+    {
+      "service": "Pipeline & Generation",
+      "owner": "backend-lead",
+      "responsibility": "Orchestrate RAG flow, configuration, retrieve chunks, and generate LLM responses"
+    },
+    {
+      "service": "User Interface",
+      "owner": "frontend-lead",
+      "responsibility": "Provide CLI and Streamlit interfaces to query the RAG pipeline"
+    },
+    {
+      "service": "Quality Assurance",
+      "owner": "qa-lead",
+      "responsibility": "Unit, integration, and E2E testing of the pipeline"
+    },
+    {
+      "service": "DevOps & Release",
+      "owner": "devops-release-lead",
+      "responsibility": "Dependency management, environment config, and execution scripts"
+    },
+    {
+      "service": "Documentation",
+      "owner": "documentation-agent",
+      "responsibility": "Project documentation and README"
+    }
+  ],
+  "modules": [
+    {
+      "module": "rag_data",
+      "path": "src/rag_pipeline",
+      "owner": "data-lead"
+    },
+    {
+      "module": "rag_backend",
+      "path": "src/rag_pipeline",
+      "owner": "backend-lead"
+    },
+    {
+      "module": "ui",
+      "path": "src/",
+      "owner": "frontend-lead"
+    },
+    {
+      "module": "tests",
+      "path": "tests/",
+      "owner": "qa-lead"
+    },
+    {
+      "module": "docs",
+      "path": "docs/",
+      "owner": "documentation-agent"
+    }
+  ],
+  "contracts": {
+    "apiSchema": "api-contract.json",
+    "dataSchema": "ChromaDB Collections"
+  }
+}
