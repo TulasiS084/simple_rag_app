@@ -167,8 +167,13 @@ with st.sidebar:
             accept_multiple_files=True,
             help="Supported formats: PDF, TXT, Markdown, CSV, Word"
         )
+        replace_existing = st.checkbox("🧹 Replace previous documents with this upload", value=True, help="Recommended: Clears previous documents from the vector database so only your new document is queried.")
         if st.button("🚀 Ingest Documents", use_container_width=True, type="primary"):
             if uploaded_files:
+                if replace_existing:
+                    pipeline.reset()
+                    st.session_state.indexed_docs = []
+                
                 prog = st.progress(0, text="Indexing files...")
                 total_files = len(uploaded_files)
                 new_chunks = 0
@@ -178,7 +183,7 @@ with st.sidebar:
                         tmp.write(uf.read())
                         tmp_path = tmp.name
                     try:
-                        res = pipeline.ingest(tmp_path)
+                        res = pipeline.ingest(tmp_path, original_filename=uf.name)
                         chunks_got = res.get("chunks_processed", 0)
                         words_got = res.get("words", 0)
                         chars_got = res.get("chars", 0)
@@ -216,7 +221,7 @@ with st.sidebar:
                 if not os.path.exists(sample_path):
                     generate_sample_pdf(sample_path)
                 try:
-                    res = pipeline.ingest(sample_path)
+                    res = pipeline.ingest(sample_path, original_filename="sample_rag_paper.pdf")
                     st.session_state.indexed_docs.append({
                         "name": "sample_rag_paper.pdf",
                         "type": "PDF",
@@ -240,7 +245,7 @@ with st.sidebar:
                     tmp.write(raw_text)
                     tmp_path = tmp.name
                 try:
-                    res = pipeline.ingest(tmp_path)
+                    res = pipeline.ingest(tmp_path, original_filename=raw_title)
                     st.session_state.indexed_docs.append({
                         "name": raw_title,
                         "type": "TXT",
@@ -321,6 +326,8 @@ with st.sidebar:
             st.session_state.active_audio_idx = None
             st.success("Vector store reset.")
             st.rerun()
+            
+    st.info("💡 **Tip:** If you see 'tmp...' files in your sources from previous sessions, click **Reset DB** to clear the old cache.")
 
 # -----------------------------------------------------------------------------
 # Main Header & Metrics

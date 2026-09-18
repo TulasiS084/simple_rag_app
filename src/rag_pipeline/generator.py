@@ -5,6 +5,95 @@ from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
+STOPWORDS = {
+    "what", "is", "are", "the", "a", "an", "of", "in", "to", "for",
+    "with", "on", "at", "by", "from", "how", "why", "who", "which",
+    "where", "when", "does", "do", "can", "could", "should", "would",
+    "and", "or", "about", "tell", "me", "explain", "give", "please",
+    "it", "its", "they", "their", "them", "this", "that", "these", "those",
+    "be", "been", "being", "have", "has", "had", "was", "were"
+}
+
+META_WORDS = {
+    "paper", "papers", "document", "documents", "pdf", "pdfs",
+    "file", "files", "article", "articles", "all", "about",
+    "handbook", "handbooks", "text", "texts", "read", "reading",
+    "say", "says", "said", "tell", "tells", "telling", "give", "gives", "given"
+}
+
+BOILERPLATE_PATTERNS = [
+    r'\bimportant\s+note\b',
+    r'\bdisclaimer\b',
+    r'\bstarting\s+template\b',
+    r'\btemplate\s+for\b',
+    r'\bcopyright\b',
+    r'©|\(c\)',
+    r'\ball\s+rights\s+reserved\b',
+    r'\blicen[sc]e\b',
+    r'\blicen[sc]ed\s+under\b',
+    r'\bterms\s+of\s+(use|service)\b',
+    r'\bconfidential\b',
+    r'\bdo\s+not\s+distribute\b',
+    r'\bopen\s+source\s+licen[sc]e\b',
+    r'\bthis\s+paper\s+is\s+a\s+template\b',
+    r'\bsample\s+template\b',
+    r'\bauthor\s+guidelines\b',
+    r'\bplease\s+cite\s+this\s+article\b',
+    r'\bproceedings\s+of\b',
+    r'\bpublished\s+by\b',
+    r'\bpeer-reviewed\b'
+]
+
+def is_boilerplate(text: str) -> bool:
+    """Check if a line or sentence contains boilerplate disclaimers."""
+    t_lower = text.lower().strip()
+    return any(re.search(pat, t_lower) for pat in BOILERPLATE_PATTERNS)
+
+def is_overview_query(query: str) -> bool:
+    """
+    Explicit detection for Document Overview / Thematic Queries such as:
+    - 'what is this paper (all) about'
+    - 'summarize this document'
+    - 'what is this document about'
+    - 'overview of this paper'
+    - 'main topic of this paper'
+    """
+    q = query.strip().lower()
+
+    overview_patterns = [
+        r'\bwhat\s+(is|are)\s+(this|the|all\s+this|it)\s+(paper|document|pdf|file|article|text|handbook)?\s*(all\s+)?about\b',
+        r'\bwhat\s+(is|are)\s+(it\s+|this\s+)?(all\s+)?about\b',
+        r'\b(summarize|summarise)\s+(this|the|all)?\s*(paper|document|pdf|file|article|text|handbook|work)?\b',
+        r'\b(summary|overview|synopsis|rundown)\s+of\s+(this|the)?\s*(paper|document|pdf|file|article|text|handbook|work)?\b',
+        r'\b(give|provide|show)\s+(me\s+)?(an?\s+)?(overview|summary|brief|synopsis|rundown)\b',
+        r'\b(main|primary|core|central|general)\s+(topic|topics|theme|themes|subject|subjects|purpose|idea|ideas)\b',
+        r'\bwhat\s+does\s+(this|the)\s+(paper|document|pdf|file|article)\s+(cover|discuss|talk\s+about|describe)\b',
+        r'\btell\s+me\s+about\s+(this|the)\s+(paper|document|pdf|file|article)\b',
+        r'\bexplain\s+(this|the)\s+(paper|document|pdf|file|article)\b',
+        r'\bwhat\s+is\s+(this|the)\s+(paper|document|pdf|file|article)\b',
+    ]
+    for pat in overview_patterns:
+        if re.search(pat, q):
+            return True
+
+    words = re.findall(r'\b[a-zA-Z0-9_-]+\b', q)
+    overview_indicators = {
+        "overview", "summary", "summarize", "summarise", "topic", "topics",
+        "theme", "themes", "subject", "subjects", "purpose", "discuss",
+        "discusses", "cover", "covers", "outline", "synopsis", "about"
+    }
+    non_meta_non_stop = [
+        w for w in words
+        if w not in STOPWORDS and w not in META_WORDS and w not in overview_indicators and len(w) > 1
+    ]
+
+    if not non_meta_non_stop and any(w in (overview_indicators | META_WORDS) for w in words):
+        if any(w in overview_indicators for w in words) or ("what" in words and "about" in words):
+            return True
+
+    return False
+
+
 class ModularGenerator:
     """
     Modular response generator supporting multiple LLM backends:
@@ -16,6 +105,8 @@ class ModularGenerator:
     Produces clean, structured, document-grounded outputs with emojis,
     bullet points, bold highlights, and direct source attribution.
     """
+
+    is_overview_query = staticmethod(is_overview_query)
 
     def __init__(
         self,
@@ -36,17 +127,32 @@ class ModularGenerator:
             f"[Context Chunk {i+1}]:\n{chunk.strip()}"
             for i, chunk in enumerate(context_chunks)
         )
+        if self.is_overview_query(query):
+            instructions = (
+                "STRICT FORMATTING & GROUNDING INSTRUCTIONS:\n"
+                "1. 🎯 **Direct Answer:** Provide a crisp, concise direct answer identifying the actual subject matter and purpose of the document based on its Title, Abstract, or Introduction. Filter out boilerplate disclaimers (e.g. 'Important Note', 'Disclaimer', 'Starting template', 'Copyright', 'License').\n"
+                "2. 📋 **Key Topics & Sections Covered:** Extract 2-4 distinct main themes or section headings from the document with bullet points using emojis (🔹, 🚀, 📌, 🛡️).\n"
+                "3. Highlight key entities and technical terms in **bold**.\n"
+                "4. 💡 **Key Takeaway:** Conclude with a brief takeaway citing relevance to the query.\n"
+                "5. If the provided context does not contain sufficient facts to answer the question, do not attempt to guess. Instead respond exactly with:\n"
+                f"❌ **No relevant information found in the uploaded documents.**\n\n💡 *The provided document does not appear to discuss '{query}'. Try asking a question about the topics covered in your document.*\n\n"
+            )
+        else:
+            instructions = (
+                "STRICT FORMATTING & GROUNDING INSTRUCTIONS:\n"
+                "1. 🎯 **Direct Answer:** Provide a crisp, concise, highly accurate direct answer based solely on the document facts.\n"
+                "2. 📋 **Key Evidence & Document Details:** Present 2-4 distinct, non-repetitive bullet points with supporting facts from the context using emojis (🔹, 🚀, 📌, 🛡️). Do not repeat the direct answer.\n"
+                "3. Highlight key entities, metrics, and technical terms in **bold**.\n"
+                "4. 💡 **Key Takeaway:** Conclude with a brief takeaway citing relevance to the query.\n"
+                "5. If the provided context does not contain sufficient facts to answer the question, do not attempt to guess. Instead respond exactly with:\n"
+                f"❌ **No relevant information found in the uploaded documents.**\n\n💡 *The provided document does not appear to discuss '{query}'. Try asking a question about the topics covered in your document.*\n\n"
+            )
+
         prompt = (
             "You are a strict, truthful AI knowledge assistant grounded entirely in provided reference documents.\n"
             "Answer the user question based ONLY and STRICTLY on the facts directly stated in the context chunks below.\n"
             "DO NOT assume, extrapolate, speculate, or fabricate any facts not explicitly present in the text.\n\n"
-            "STRICT FORMATTING & GROUNDING INSTRUCTIONS:\n"
-            "1. 🎯 **Direct Answer:** Provide a crisp, concise, highly accurate direct answer based solely on the document facts.\n"
-            "2. 📋 **Key Evidence & Document Details:** Present 2-4 distinct, non-repetitive bullet points with supporting facts from the context using emojis (🔹, 🚀, 📌, 🛡️). Do not repeat the direct answer.\n"
-            "3. Highlight key entities, metrics, and technical terms in **bold**.\n"
-            "4. 💡 **Key Takeaway:** Conclude with a brief takeaway citing relevance to the query.\n"
-            "5. If the provided context does not contain sufficient facts to answer the question, do not attempt to guess. Instead respond exactly with:\n"
-            f"❌ **No relevant information found in the uploaded documents.**\n\n💡 *The provided document does not appear to discuss '{query}'. Try asking a question about the topics covered in your document.*\n\n"
+            f"{instructions}"
             f"--- CONTEXT ---\n{joined_context}\n\n"
             f"--- QUESTION ---\n{query}\n\n"
             f"--- GROUNDED ANSWER ---"
@@ -90,6 +196,263 @@ class ModularGenerator:
         else:
             return self._generate_fallback(query, text_chunks, raw_chunks=context_chunks)
 
+    def _generate_overview_response(
+        self,
+        query: str,
+        text_chunks: List[str],
+        raw_chunks: Optional[List[Any]] = None
+    ) -> str:
+        """
+        Generate high-accuracy response for Document Overview / Thematic Queries.
+        - Prioritizes Title, Abstract, Introduction, and section headings
+        - Filters out boilerplate disclaimers (Important Note, Disclaimer, Template, Copyright, License)
+        - Formulates accurate Direct Answer identifying actual subject matter and purpose
+        - Extracts 2-4 distinct main themes or section headings for Key Topics & Sections Covered
+        """
+        if not text_chunks:
+            return (
+                f"❌ **No relevant information found in the uploaded documents.**\n\n"
+                f"💡 *The provided document does not appear to discuss '{query}'. "
+                f"Try asking a question about the topics covered in your document.*"
+            )
+
+        # 1. Order chunks to prioritize document start (chunk_index == 0 or page == 1)
+        paired = list(zip(raw_chunks, text_chunks)) if raw_chunks else [(None, c) for c in text_chunks]
+
+        def chunk_order_key(item):
+            raw, _ = item
+            if isinstance(raw, dict):
+                meta = raw.get("metadata", {})
+                page = meta.get("page", 9999)
+                idx = meta.get("chunk_index", 9999)
+                return (page, idx)
+            return (9999, 9999)
+
+        sorted_pairs = sorted(paired, key=chunk_order_key)
+        ordered_chunks = [txt for _, txt in sorted_pairs]
+
+        # 2. Filter out boilerplate disclaimers from chunks
+        clean_chunks = []
+        for chunk in ordered_chunks:
+            lines = [l for l in chunk.split("\n") if not is_boilerplate(l)]
+            clean = "\n".join(lines).strip()
+            if clean:
+                clean_chunks.append(clean)
+        if not clean_chunks:
+            clean_chunks = ordered_chunks
+
+        # Helper: text similarity
+        def is_similar(t1: str, t2: str) -> bool:
+            s1 = t1.lower().strip()
+            s2 = t2.lower().strip()
+            if s1 == s2 or s1 in s2 or s2 in s1:
+                return True
+            w1 = set(re.findall(r'\b\w+\b', s1))
+            w2 = set(re.findall(r'\b\w+\b', s2))
+            if not w1 or not w2:
+                return False
+            jaccard = len(w1 & w2) / len(w1 | w2)
+            return jaccard > 0.55
+
+        # 3. Extract Document Title
+        title = None
+        if clean_chunks:
+            first_lines = [l.strip() for l in clean_chunks[0].split("\n") if l.strip()]
+            for line in first_lines[:6]:
+                if is_boilerplate(line):
+                    continue
+                if len(line) < 4 or line.isdigit():
+                    continue
+                if re.match(r'^(page\s+\d+|http|www|draft|confidential|abstract\b|\d+[\.\)]|\bchapter\b|\bsection\b)', line, re.IGNORECASE):
+                    continue
+                if len(line) <= 160:
+                    title = line.strip("#* ")
+                    break
+
+        # 4. Extract Abstract / Introduction / Core Subject Matter Passage
+        abstract_text = None
+        intro_text = None
+        for chunk in clean_chunks:
+            if not abstract_text:
+                m_abs = re.search(r'(?:^|\n)\s*Abstract(?:\s*[:\-—]|\s*\n)\s*(.*?)(?=(?:\n\s*\n|\n(?:\d+[\.\)]|\bIntroduction\b|[A-Z]{3,})|\Z))', chunk, re.IGNORECASE | re.DOTALL)
+                if m_abs:
+                    cand = m_abs.group(1).strip()
+                    if len(cand) > 20 and not is_boilerplate(cand):
+                        abstract_text = cand
+            if not intro_text:
+                m_intro = re.search(r'(?:^|\n)\s*(?:\d+[\.\)]\s*)?Introduction(?:\s+to\s+[^\n]+)?(?:\s*[:\-—]|\s*\n)\s*(.*?)(?=(?:\n\s*\n(?:\d+[\.\)]|[A-Z])|\Z))', chunk, re.IGNORECASE | re.DOTALL)
+                if m_intro:
+                    cand = m_intro.group(1).strip()
+                    if len(cand) > 20 and not is_boilerplate(cand):
+                        intro_text = cand
+
+        def extract_sentences_from_text(txt: str, max_sents: int = 2) -> str:
+            raw_s = re.split(r'(?<=[.?!])\s+|\n+', txt)
+            good_sents = []
+            for s in raw_s:
+                c = re.sub(r'^[-*•\d\.\)]+\s*', '', s).strip()
+                if len(c) >= 25 and not is_boilerplate(c):
+                    if title and c.lower() == title.lower():
+                        continue
+                    good_sents.append(c)
+                    if len(good_sents) >= max_sents:
+                        break
+            return " ".join(good_sents)
+
+        if abstract_text:
+            core_passage = extract_sentences_from_text(abstract_text, 2) or abstract_text[:280]
+        elif intro_text:
+            core_passage = extract_sentences_from_text(intro_text, 2) or intro_text[:280]
+        else:
+            core_passage = extract_sentences_from_text(clean_chunks[0], 2)
+
+        # Fallback if core_passage is still empty
+        if not core_passage:
+            for c in clean_chunks:
+                core_passage = extract_sentences_from_text(c, 2)
+                if core_passage:
+                    break
+
+        if not core_passage:
+            core_passage = "This document presents structured technical and domain information."
+
+        # Formulate Direct Answer identifying actual subject matter and purpose
+        if title and not core_passage.lower().startswith(title.lower()):
+            direct_answer = f"This document focuses on **{title}**. {core_passage}"
+        else:
+            direct_answer = core_passage
+
+        # 5. Extract 2-4 distinct main themes or section headings
+        topics = []
+        seen_headings = set()
+
+        def add_topic(heading: str, summary: str):
+            h_clean = heading.strip().strip("#*:").strip()
+            h_display = re.sub(r'^(?:(?:\d+|[IVXLCDM]+)[\.\)]\s*|Step\s+\d+:\s*)', '', h_clean).strip()
+            if not h_display or is_boilerplate(h_display) or len(h_display) < 3:
+                return
+            h_lower = h_display.lower()
+            if h_lower in seen_headings or any(is_similar(h_lower, s) for s in seen_headings):
+                return
+            s_clean = summary.strip() if summary else ""
+            if s_clean and is_boilerplate(s_clean):
+                s_clean = ""
+            seen_headings.add(h_lower)
+            topics.append((h_display, s_clean))
+
+        # Check numbered section headings (e.g. "1. Introduction to RAG", "2. Benefits of RAG")
+        numbered_pattern = re.compile(r'(?:^|\n)(?:(?:\d+|[IVXLCDM]+)[\.\)]\s+)([A-Z][^\n]{2,60})', re.MULTILINE)
+        for chunk in clean_chunks:
+            for match in numbered_pattern.finditer(chunk):
+                heading = match.group(1)
+                after_text = chunk[match.end():]
+                following_lines = [l.strip() for l in after_text.split("\n") if l.strip()]
+                summary = ""
+                if following_lines:
+                    first_line = following_lines[0]
+                    if not is_boilerplate(first_line) and not re.match(r'^(?:\d+|[IVXLCDM]+)[\.\)]', first_line):
+                        summary = re.sub(r'^[-*•]\s*', '', first_line)
+                        summary = re.split(r'(?<=[.?!])\s+', summary)[0]
+                add_topic(heading, summary)
+                if len(topics) >= 4:
+                    break
+            if len(topics) >= 4:
+                break
+
+        # Check Markdown headings (e.g. "## Heading")
+        if len(topics) < 4:
+            md_pattern = re.compile(r'(?:^|\n)#{1,4}\s+([A-Z][^\n]{2,60})', re.MULTILINE)
+            for chunk in clean_chunks:
+                for match in md_pattern.finditer(chunk):
+                    heading = match.group(1)
+                    after_text = chunk[match.end():]
+                    following_lines = [l.strip() for l in after_text.split("\n") if l.strip()]
+                    summary = ""
+                    if following_lines:
+                        first_line = following_lines[0]
+                        if not is_boilerplate(first_line) and not first_line.startswith("#"):
+                            summary = re.split(r'(?<=[.?!])\s+', re.sub(r'^[-*•]\s*', '', first_line))[0]
+                    add_topic(heading, summary)
+                    if len(topics) >= 4:
+                        break
+                if len(topics) >= 4:
+                    break
+
+        # Check colon headers (e.g. "- Reduced Hallucination: Grounding answers...")
+        if len(topics) < 2:
+            colon_pattern = re.compile(r'(?:^|\n)[-*•]?\s*([A-Z][A-Za-z0-9\s-]{2,40}):\s*([^\n]{10,120})', re.MULTILINE)
+            for chunk in clean_chunks:
+                for match in colon_pattern.finditer(chunk):
+                    heading = match.group(1)
+                    summary = match.group(2)
+                    add_topic(heading, summary)
+                    if len(topics) >= 4:
+                        break
+                if len(topics) >= 4:
+                    break
+
+        # Fallback if fewer than 2 topics: extract distinct informative sentences across chunks
+        if len(topics) < 2:
+            for chunk in clean_chunks:
+                sents = [s.strip() for s in re.split(r'(?<=[.?!])\s+|\n+', chunk) if len(s.strip()) > 30]
+                for sent in sents:
+                    clean_s = re.sub(r'^[-*•\d\.\)]+\s*', '', sent).strip()
+                    if is_boilerplate(clean_s) or is_similar(clean_s, direct_answer):
+                        continue
+                    words = clean_s.split()
+                    if len(words) > 5:
+                        theme_title = " ".join(words[:4]).rstrip(",.:;-")
+                        add_topic(theme_title, clean_s)
+                    if len(topics) >= 2:
+                        break
+                if len(topics) >= 2:
+                    break
+
+        # Format 2-4 topics with emojis
+        bullet_emojis = ["🔹", "📌", "🚀", "🛡️"]
+        formatted_bullets = []
+        for idx, (heading, summary) in enumerate(topics[:4]):
+            emoji = bullet_emojis[idx % len(bullet_emojis)]
+            if summary and not is_similar(heading, summary):
+                if len(summary) > 160:
+                    summary = summary[:157] + "..."
+                formatted_bullets.append(f"{emoji} **{heading}:** {summary}")
+            else:
+                formatted_bullets.append(f"{emoji} **{heading}**")
+
+        if not formatted_bullets:
+            formatted_bullets.append("🔹 **Document Overview:** Comprehensive overview of document structure and core topics.")
+
+        topics_str = "\n\n".join(formatted_bullets)
+
+        # 6. Citations and Key Takeaway
+        sources = []
+        if raw_chunks:
+            for c in raw_chunks:
+                if isinstance(c, dict):
+                    src = c.get("metadata", {}).get("source")
+                    if src and str(src) not in sources:
+                        sources.append(str(src))
+
+        if sources:
+            source_citation = f"source: **{', '.join(sources)}**"
+        else:
+            source_citation = "uploaded document knowledge base"
+
+        takeaway = (
+            f"💡 **Key Takeaway:**\n"
+            f"- Grounded directly in factual evidence from {source_citation} "
+            f"providing a thematic overview across **{len(text_chunks)} retrieved knowledge chunk(s)**."
+        )
+
+        return (
+            f"🎯 **Direct Answer:**\n"
+            f"{direct_answer}\n\n"
+            f"📋 **Key Topics & Sections Covered:**\n\n"
+            f"{topics_str}\n\n"
+            f"{takeaway}"
+        )
+
     def _generate_fallback(
         self,
         query: str,
@@ -110,18 +473,15 @@ class ModularGenerator:
                 f"Try asking a question about the topics covered in your document.*"
             )
 
-        stopwords = {
-            "what", "is", "are", "the", "a", "an", "of", "in", "to", "for",
-            "with", "on", "at", "by", "from", "how", "why", "who", "which",
-            "where", "when", "does", "do", "can", "could", "should", "would",
-            "and", "or", "about", "tell", "me", "explain", "give", "please",
-            "it", "its", "they", "their", "them", "this", "that", "these", "those",
-            "be", "been", "being", "have", "has", "had", "was", "were"
-        }
+        # Check for Document Overview / Thematic Queries
+        if self.is_overview_query(query):
+            return self._generate_overview_response(query, text_chunks, raw_chunks=raw_chunks)
+
+        stopwords = STOPWORDS
 
         query_words = [
             w.lower() for w in re.findall(r'\b[a-zA-Z0-9_-]+\b', query)
-            if w.lower() not in stopwords and len(w) > 1
+            if w.lower() not in stopwords and w.lower() not in META_WORDS and len(w) > 1
         ]
 
         def term_matches(term: str, text_lower: str) -> bool:
@@ -163,14 +523,14 @@ class ModularGenerator:
                 clean = s.strip()
                 # Strip leading list markers or numbers (e.g. "- ", "* ", "1. ")
                 clean = re.sub(r'^[-*•\d\.\)]+\s*', '', clean).strip()
-                if len(clean) >= 20:
+                if len(clean) >= 20 and not is_boilerplate(clean):
                     chunk_sentences.append((c_idx, s_idx, clean))
                     s_idx += 1
 
         if not chunk_sentences:
             for c_idx, chunk in enumerate(text_chunks):
                 clean = chunk.strip().replace("\n", " ")
-                if clean:
+                if clean and not is_boilerplate(clean):
                     chunk_sentences.append((c_idx, 0, clean))
 
         # Sentence scoring function favoring top semantic chunks & query relevance

@@ -22,12 +22,13 @@ def clean_pdf_text(text: str) -> str:
     return cleaned.strip()
 
 
-def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
+def extract_text_from_pdf(pdf_path: str, original_filename: Optional[str] = None) -> List[Dict]:
     """
     Extract text page-by-page from a PDF file.
 
     Args:
         pdf_path: Path to the PDF file.
+        original_filename: Optional actual filename to be recorded in metadata.
 
     Returns:
         List of dictionaries containing page text, raw text, word count,
@@ -36,10 +37,7 @@ def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"PDF file not found at {pdf_path}")
     
-    if not pdf_path.lower().endswith(".pdf"):
-        raise ValueError("File must have a .pdf extension")
-
-    filename = os.path.basename(pdf_path)
+    filename = original_filename or os.path.basename(pdf_path)
     extracted_pages = []
     
     # Try pypdf first, then PyPDF2 fallback
@@ -114,18 +112,18 @@ def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
     return extracted_pages
 
 
-def extract_text_from_document(file_path: str) -> List[Dict]:
+def extract_text_from_document(file_path: str, original_filename: Optional[str] = None) -> List[Dict]:
     """
     Universal document text extractor supporting PDF, TXT, Markdown, CSV, and code files.
     """
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found at: {file_path}")
 
-    ext = os.path.splitext(file_path)[1].lower()
-    filename = os.path.basename(file_path)
+    ext = os.path.splitext(original_filename or file_path)[1].lower()
+    filename = original_filename or os.path.basename(file_path)
 
     if ext == ".pdf":
-        return extract_text_from_pdf(file_path)
+        return extract_text_from_pdf(file_path, original_filename=filename)
     
     elif ext in [".txt", ".md", ".markdown", ".csv", ".json", ".log", ".py", ".html"]:
         try:
@@ -250,21 +248,25 @@ def extract_text_from_document(file_path: str) -> List[Dict]:
 class DocumentReader:
     """Universal Document Reader for RAG pipeline."""
 
-    def __init__(self, file_path: Optional[str] = None):
+    def __init__(self, file_path: Optional[str] = None, original_filename: Optional[str] = None):
         self.file_path = file_path
+        self.original_filename = original_filename
 
-    def read(self, file_path: Optional[str] = None) -> List[Dict]:
+    def read(self, file_path: Optional[str] = None, original_filename: Optional[str] = None) -> List[Dict]:
         path = file_path or self.file_path
+        orig = original_filename or self.original_filename
         if not path:
             raise ValueError("No file path specified")
-        return extract_text_from_document(path)
+        return extract_text_from_document(path, original_filename=orig)
 
 
 class PDFReader(DocumentReader):
     """PDFReader class wrapper for backward compatibility."""
 
-    def read(self, pdf_path: Optional[str] = None) -> List[Dict]:
+    def read(self, pdf_path: Optional[str] = None, original_filename: Optional[str] = None) -> List[Dict]:
         path = pdf_path or self.file_path
+        orig = original_filename or self.original_filename
         if not path:
             raise ValueError("No PDF path specified")
-        return extract_text_from_pdf(path)
+        return extract_text_from_pdf(path, original_filename=orig)
+

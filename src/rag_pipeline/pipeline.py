@@ -48,7 +48,8 @@ class RAGPipeline:
         self,
         file_path: str,
         chunk_size: Optional[int] = None,
-        chunk_overlap: Optional[int] = None
+        chunk_overlap: Optional[int] = None,
+        original_filename: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Step 1, Step 2, and Step 3:
@@ -57,11 +58,11 @@ class RAGPipeline:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Document file not found at: {file_path}")
 
-        filename = os.path.basename(file_path)
+        filename = original_filename or os.path.basename(file_path)
 
         # Step 1: Read text from input document
         logger.info(f"Step 1: Reading document from {file_path}")
-        sections = extract_text_from_document(file_path)
+        sections = extract_text_from_document(file_path, original_filename=filename)
         if not sections:
             raise ValueError(f"No extractable text found in file: {filename}")
 
@@ -73,7 +74,8 @@ class RAGPipeline:
         all_chunks: List[Dict[str, Any]] = []
         for section in sections:
             sec_text = section["text"]
-            sec_meta = section["metadata"]
+            sec_meta = dict(section["metadata"])
+            sec_meta["source"] = filename
             chunks = chunk_text(
                 text=sec_text,
                 chunk_size=c_size,
@@ -136,20 +138,22 @@ class RAGPipeline:
         self,
         file_paths: List[str],
         chunk_size: Optional[int] = None,
-        chunk_overlap: Optional[int] = None
+        chunk_overlap: Optional[int] = None,
+        original_filenames: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Batch ingest multiple document files."""
         total_chunks = 0
         successful_files = []
         errors = []
 
-        for path in file_paths:
+        for idx, path in enumerate(file_paths):
+            orig = original_filenames[idx] if original_filenames and idx < len(original_filenames) else None
             try:
-                res = self.ingest(path, chunk_size, chunk_overlap)
+                res = self.ingest(path, chunk_size, chunk_overlap, original_filename=orig)
                 total_chunks += res.get("chunks_processed", 0)
-                successful_files.append(os.path.basename(path))
+                successful_files.append(res.get("filename", os.path.basename(path)))
             except Exception as e:
-                errors.append({"file": os.path.basename(path), "error": str(e)})
+                errors.append({"file": orig or os.path.basename(path), "error": str(e)})
 
         return {
             "status": "success" if not errors else ("partial" if successful_files else "failed"),
@@ -177,6 +181,41 @@ class RAGPipeline:
         # Step 5: Embed query and extract top-k chunks from ChromaDB
         logger.info(f"Step 5: Retrieving top {k} chunks for query: '{query}'")
         retrieved_chunks = self.vector_store.query(query_text=query, top_k=k)
+
+        # For overview queries, retrieve and prioritize document Title, Abstract, Introduction, and headings
+        if hasattr(self.generator, "is_overview_query") and self.generator.is_overview_query(query):
+            overview_hints = self.vector_store.query(
+                query_text="title abstract introduction overview summary document structure",
+                top_k=max(k, 4)
+            )
+            seen_ids = set()
+            prioritized = []
+
+            def is_initial(c):
+                if isinstance(c, dict):
+                    m = c.get("metadata", {})
+                    return m.get("chunk_index") == 0 or m.get("page") == 1
+                return False
+
+            all_candidates = overview_hints + retrieved_chunks
+            # Add initial chunks first
+            for c in all_candidates:
+                cid = c.get("chunk_id") if isinstance(c, dict) else str(c)
+                if is_initial(c) and cid not in seen_ids:
+                    seen_ids.add(cid)
+                    prioritized.append(c)
+
+            # Add remaining chunks
+            for c in all_candidates:
+                cid = c.get("chunk_id") if isinstance(c, dict) else str(c)
+                if cid not in seen_ids:
+                    seen_ids.add(cid)
+                    prioritized.append(c)
+                if len(prioritized) >= max(k, 4):
+                    break
+
+            if prioritized:
+                retrieved_chunks = prioritized
 
         # Step 6: Generate response considering chunks as context using modular LLM generator
         provider = model_type or self.config.llm_provider
