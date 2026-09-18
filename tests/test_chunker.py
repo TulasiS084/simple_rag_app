@@ -16,6 +16,11 @@ class TestChunker(unittest.TestCase):
         chunks = chunk_text("")
         self.assertEqual(chunks, [])
 
+    def test_default_parameters(self):
+        chunker = TextChunker()
+        self.assertEqual(chunker.chunk_size, 1000)
+        self.assertEqual(chunker.chunk_overlap, 150)
+
     def test_chunk_size_and_overlap(self):
         text = (
             "Retrieval-augmented generation (RAG) is an AI framework for improving the quality "
@@ -39,6 +44,27 @@ class TestChunker(unittest.TestCase):
         chunks = chunk_text(long_word, chunk_size=50, chunk_overlap=10)
         self.assertEqual(len(chunks), 1)
         self.assertEqual(chunks[0]["text"], long_word)
+
+    def test_paragraph_and_sentence_boundary_preservation(self):
+        para1 = "Artificial intelligence transforms software development. How does it work? It relies on neural models!"
+        para2 = "Vector databases enable rapid semantic indexing. ChromaDB is a popular embedded vector store."
+        full_text = f"{para1}\n\n{para2}"
+
+        # With default size 1000, both paragraphs fit in one chunk and retain paragraph break
+        chunks = chunk_text(full_text, chunk_size=1000, chunk_overlap=150)
+        self.assertEqual(len(chunks), 1)
+        self.assertIn("\n\n", chunks[0]["text"])
+        self.assertIn("?", chunks[0]["text"])
+        self.assertIn("!", chunks[0]["text"])
+
+        # With smaller chunk size forcing split at sentence boundary
+        chunker = TextChunker(chunk_size=120, chunk_overlap=30)
+        split_chunks = chunker.chunk(full_text)
+        self.assertTrue(len(split_chunks) >= 2)
+        # Verify no chunk ends or starts with a truncated word
+        for c in split_chunks:
+            self.assertFalse(c["text"].startswith(" "))
+            self.assertFalse(c["text"].endswith(" "))
 
 if __name__ == "__main__":
     unittest.main()

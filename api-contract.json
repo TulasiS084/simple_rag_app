@@ -10,8 +10,8 @@
         "type": "object",
         "properties": {
           "file_path": { "type": "string" },
-          "chunk_size": { "type": "integer", "default": 500 },
-          "chunk_overlap": { "type": "integer", "default": 50 }
+          "chunk_size": { "type": "integer", "default": 1000 },
+          "chunk_overlap": { "type": "integer", "default": 150 }
         },
         "required": ["file_path"]
       },
@@ -31,7 +31,7 @@
         "type": "object",
         "properties": {
           "query": { "type": "string" },
-          "top_k": { "type": "integer", "default": 3 },
+          "top_k": { "type": "integer", "default": 4 },
           "model_type": { "type": "string", "enum": ["local", "gemini", "openai", "fallback"] }
         },
         "required": ["query"]

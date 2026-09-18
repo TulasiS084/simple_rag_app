@@ -2,6 +2,26 @@ import os
 import re
 from typing import List, Dict, Optional
 
+
+def clean_pdf_text(text: str) -> str:
+    """
+    Clean extracted text while preserving line breaks and paragraph structure.
+    Normalizes carriage returns, cleans tabs and excessive horizontal spaces
+    per line, and collapses 3 or more consecutive newlines into paragraph breaks (\n\n).
+    """
+    if not text:
+        return ""
+    # Normalize carriage returns
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    # Clean tabs and excessive horizontal spaces per line, trimming leading/trailing spaces
+    cleaned_lines = [re.sub(r'[ \t\f\v]+', ' ', line).strip() for line in normalized.split("\n")]
+    # Rejoin lines with newline
+    joined = "\n".join(cleaned_lines)
+    # Collapse 3 or more consecutive newlines into paragraph breaks (\n\n)
+    cleaned = re.sub(r'\n{3,}', '\n\n', joined)
+    return cleaned.strip()
+
+
 def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
     """
     Extract text page-by-page from a PDF file.
@@ -10,7 +30,8 @@ def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
         pdf_path: Path to the PDF file.
 
     Returns:
-        List of dictionaries containing page text and metadata.
+        List of dictionaries containing page text, raw text, word count,
+        character count, and metadata.
     """
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"PDF file not found at {pdf_path}")
@@ -18,6 +39,7 @@ def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
     if not pdf_path.lower().endswith(".pdf"):
         raise ValueError("File must have a .pdf extension")
 
+    filename = os.path.basename(pdf_path)
     extracted_pages = []
     
     # Try pypdf first, then PyPDF2 fallback
@@ -28,22 +50,66 @@ def extract_text_from_pdf(pdf_path: str) -> List[Dict]:
             from PyPDF2 import PdfReader
 
         reader = PdfReader(pdf_path)
+
+        # Check if PDF is encrypted or password-protected
+        if getattr(reader, "is_encrypted", False):
+            try:
+                decrypted = reader.decrypt("")
+                if decrypted == 0:
+                    raise ValueError(
+                        f"No extractable text found in '{filename}'. "
+                        "This PDF may be a scanned image without an OCR layer or encrypted. "
+                        "Please provide a document with selectable text."
+                    )
+            except Exception:
+                raise ValueError(
+                    f"No extractable text found in '{filename}'. "
+                    "This PDF may be a scanned image without an OCR layer or encrypted. "
+                    "Please provide a document with selectable text."
+                )
+
         for page_num, page in enumerate(reader.pages):
-            text = page.extract_text()
-            if text:
-                # Clean whitespace
-                cleaned_text = re.sub(r'\s+', ' ', text).strip()
-                if cleaned_text:
-                    extracted_pages.append({
-                        "text": cleaned_text,
-                        "metadata": {
-                            "source": os.path.basename(pdf_path),
-                            "page": page_num + 1,
-                            "type": "pdf"
-                        }
-                    })
+            raw_text = page.extract_text() or ""
+            cleaned_text = clean_pdf_text(raw_text)
+            if cleaned_text:
+                word_count = len(cleaned_text.split())
+                char_count = len(cleaned_text)
+                extracted_pages.append({
+                    "text": cleaned_text,
+                    "raw_text": raw_text,
+                    "word_count": word_count,
+                    "char_count": char_count,
+                    "character_count": char_count,
+                    "words": word_count,
+                    "chars": char_count,
+                    "metadata": {
+                        "source": filename,
+                        "page": page_num + 1,
+                        "type": "pdf",
+                        "word_count": word_count,
+                        "char_count": char_count,
+                        "raw_text": raw_text
+                    }
+                })
+    except (ValueError, FileNotFoundError):
+        raise
     except Exception as e:
+        err_msg = str(e).lower()
+        if "encrypt" in err_msg or "password" in err_msg:
+            raise ValueError(
+                f"No extractable text found in '{filename}'. "
+                "This PDF may be a scanned image without an OCR layer or encrypted. "
+                "Please provide a document with selectable text."
+            )
         raise RuntimeError(f"Failed to read PDF file {pdf_path}: {e}")
+
+    total_chars = sum(p["char_count"] for p in extracted_pages)
+    if not extracted_pages or total_chars == 0:
+        raise ValueError(
+            f"No extractable text found in '{filename}'. "
+            "This PDF may be a scanned image without an OCR layer or encrypted. "
+            "Please provide a document with selectable text."
+        )
 
     return extracted_pages
 
@@ -68,18 +134,27 @@ def extract_text_from_document(file_path: str) -> List[Dict]:
         except Exception as e:
             raise RuntimeError(f"Error reading text document {filename}: {e}")
 
-        # Clean content
-        cleaned_text = re.sub(r'[ \t]+', ' ', content).strip()
+        cleaned_text = clean_pdf_text(content)
         if not cleaned_text:
             return []
 
-        # Split long documents into logical sections/pages (e.g. every 1500 chars) if needed
+        word_count = len(cleaned_text.split())
+        char_count = len(cleaned_text)
         return [{
             "text": cleaned_text,
+            "raw_text": content,
+            "word_count": word_count,
+            "char_count": char_count,
+            "character_count": char_count,
+            "words": word_count,
+            "chars": char_count,
             "metadata": {
                 "source": filename,
                 "page": 1,
-                "type": ext.lstrip(".")
+                "type": ext.lstrip("."),
+                "word_count": word_count,
+                "char_count": char_count,
+                "raw_text": content
             }
         }]
 
@@ -89,15 +164,29 @@ def extract_text_from_document(file_path: str) -> List[Dict]:
             doc = docx.Document(file_path)
             full_text = []
             for para in doc.paragraphs:
-                if para.text.strip():
-                    full_text.append(para.text.strip())
-            cleaned = "\n".join(full_text)
+                p_text = re.sub(r'[ \t\f\v]+', ' ', para.text).strip()
+                if p_text:
+                    full_text.append(p_text)
+            cleaned = "\n\n".join(full_text)
+            if not cleaned:
+                return []
+            word_count = len(cleaned.split())
+            char_count = len(cleaned)
             return [{
                 "text": cleaned,
+                "raw_text": cleaned,
+                "word_count": word_count,
+                "char_count": char_count,
+                "character_count": char_count,
+                "words": word_count,
+                "chars": char_count,
                 "metadata": {
                     "source": filename,
                     "page": 1,
-                    "type": "docx"
+                    "type": "docx",
+                    "word_count": word_count,
+                    "char_count": char_count,
+                    "raw_text": cleaned
                 }
             }]
         except ImportError:
@@ -105,13 +194,26 @@ def extract_text_from_document(file_path: str) -> List[Dict]:
             with open(file_path, "rb") as f:
                 raw_bytes = f.read()
             text = "".join(chr(b) for b in raw_bytes if 32 <= b <= 126 or b in (10, 13))
-            cleaned = re.sub(r'\s+', ' ', text).strip()
+            cleaned = clean_pdf_text(text)
+            if not cleaned:
+                return []
+            word_count = len(cleaned.split())
+            char_count = len(cleaned)
             return [{
                 "text": cleaned,
+                "raw_text": text,
+                "word_count": word_count,
+                "char_count": char_count,
+                "character_count": char_count,
+                "words": word_count,
+                "chars": char_count,
                 "metadata": {
                     "source": filename,
                     "page": 1,
-                    "type": "docx-raw"
+                    "type": "docx-raw",
+                    "word_count": word_count,
+                    "char_count": char_count,
+                    "raw_text": text
                 }
             }]
     else:
@@ -119,12 +221,26 @@ def extract_text_from_document(file_path: str) -> List[Dict]:
         try:
             with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
+            cleaned = clean_pdf_text(content)
+            if not cleaned:
+                return []
+            word_count = len(cleaned.split())
+            char_count = len(cleaned)
             return [{
-                "text": re.sub(r'\s+', ' ', content).strip(),
+                "text": cleaned,
+                "raw_text": content,
+                "word_count": word_count,
+                "char_count": char_count,
+                "character_count": char_count,
+                "words": word_count,
+                "chars": char_count,
                 "metadata": {
                     "source": filename,
                     "page": 1,
-                    "type": "generic"
+                    "type": "generic",
+                    "word_count": word_count,
+                    "char_count": char_count,
+                    "raw_text": content
                 }
             }]
         except Exception as e:
@@ -151,4 +267,4 @@ class PDFReader(DocumentReader):
         path = pdf_path or self.file_path
         if not path:
             raise ValueError("No PDF path specified")
-        return extract_text_from_document(path)
+        return extract_text_from_pdf(path)

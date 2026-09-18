@@ -1,13 +1,20 @@
 {
   "$schema": "./.agents/schemas/qa-report.schema.json",
-  "reportId": "QA-REP-001",
-  "timestamp": "2026-09-18T13:02:45+05:30",
+  "reportId": "QA-REP-003",
+  "timestamp": "2026-09-18T18:25:00+05:30",
   "overallStatus": "passed",
   "testSuites": [
     {
       "suiteName": "Text Chunker Unit Tests (test_chunker.py)",
-      "total": 3,
-      "passed": 3,
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "suiteName": "PDF Reader Tests (test_pdf_reader.py)",
+      "total": 8,
+      "passed": 8,
       "failed": 0,
       "skipped": 0
     },
@@ -20,15 +27,15 @@
     },
     {
       "suiteName": "Modular Generator Tests (test_generator.py)",
-      "total": 4,
-      "passed": 4,
+      "total": 6,
+      "passed": 6,
       "failed": 0,
       "skipped": 0
     },
     {
       "suiteName": "End-to-End RAG Pipeline Integration Tests (test_pipeline.py)",
-      "total": 3,
-      "passed": 3,
+      "total": 4,
+      "passed": 4,
       "failed": 0,
       "skipped": 0
     }

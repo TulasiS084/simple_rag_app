@@ -101,11 +101,11 @@ st.markdown("""
 @st.cache_resource
 def load_pipeline():
     config = RAGConfig(
-        chunk_size=500,
-        chunk_overlap=50,
+        chunk_size=1000,
+        chunk_overlap=150,
         embedding_model="sentence-transformers/all-MiniLM-L6-v2",
         collection_name="rag_dashboard_collection",
-        top_k=3,
+        top_k=4,
         llm_provider="fallback"
     )
     return RAGPipeline(config)
@@ -139,12 +139,17 @@ if "pending_prompt" not in st.session_state:
 if "active_audio_idx" not in st.session_state:
     st.session_state.active_audio_idx = None
 
+if "just_activated_audio" not in st.session_state:
+    st.session_state.just_activated_audio = False
+
+if "is_voice_query" not in st.session_state:
+    st.session_state.is_voice_query = False
+
 # -----------------------------------------------------------------------------
 # Sidebar: Document Management, Voice Assistant & Model Config
 # -----------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("## 🎙️ Voice Assistant Settings")
-    auto_speak = st.toggle("⚡ Auto-Speak Responses Loudly", value=False, help="Automatically speaks new assistant answers through your speakers")
     voice_speed = st.select_slider("🗣️ Speech Speed", options=[-2, -1, 0, 1, 2], value=0, format_func=lambda x: {
         -2: "Slower", -1: "Slow", 0: "Normal", 1: "Fast", 2: "Faster"
     }[x])
@@ -153,7 +158,7 @@ with st.sidebar:
     st.markdown("## 📚 Document Hub")
     st.caption("Upload documents to build your local RAG knowledge base.")
 
-    upload_tab, sample_tab, raw_tab = st.tabs(["📁 Upload", "📄 Sample", "✍️ Notes"])
+    upload_tab, sample_tab, raw_tab, inspect_tab = st.tabs(["📁 Upload", "📄 Sample", "✍️ Notes", "📑 Inspect"])
 
     with upload_tab:
         uploaded_files = st.file_uploader(
@@ -175,11 +180,22 @@ with st.sidebar:
                     try:
                         res = pipeline.ingest(tmp_path)
                         chunks_got = res.get("chunks_processed", 0)
+                        words_got = res.get("words", 0)
+                        chars_got = res.get("chars", 0)
+                        
+                        if chars_got == 0:
+                            st.warning(f"⚠️ Warning: No selectable text could be extracted from '{uf.name}'. If this is a scanned image, please upload a digital PDF with selectable text.")
+                            
                         new_chunks += chunks_got
                         st.session_state.indexed_docs.append({
                             "name": uf.name,
                             "type": suffix.lstrip(".").upper(),
-                            "chunks": chunks_got
+                            "pages": res.get("pages_processed", 0),
+                            "chunks": chunks_got,
+                            "words": words_got,
+                            "chars": chars_got,
+                            "preview": res.get("preview", ""),
+                            "full_text": res.get("full_text", "")
                         })
                     except Exception as e:
                         st.error(f"Error processing {uf.name}: {e}")
@@ -204,7 +220,12 @@ with st.sidebar:
                     st.session_state.indexed_docs.append({
                         "name": "sample_rag_paper.pdf",
                         "type": "PDF",
-                        "chunks": res.get("chunks_processed", 0)
+                        "pages": res.get("pages_processed", 0),
+                        "chunks": res.get("chunks_processed", 0),
+                        "words": res.get("words", 0),
+                        "chars": res.get("chars", 0),
+                        "preview": res.get("preview", ""),
+                        "full_text": res.get("full_text", "")
                     })
                     st.success(f"Sample PDF indexed with {res.get('chunks_processed', 0)} chunks!")
                 except Exception as e:
@@ -223,7 +244,12 @@ with st.sidebar:
                     st.session_state.indexed_docs.append({
                         "name": raw_title,
                         "type": "TXT",
-                        "chunks": res.get("chunks_processed", 0)
+                        "pages": res.get("pages_processed", 0),
+                        "chunks": res.get("chunks_processed", 0),
+                        "words": res.get("words", 0),
+                        "chars": res.get("chars", 0),
+                        "preview": res.get("preview", ""),
+                        "full_text": res.get("full_text", "")
                     })
                     st.success(f"Indexed {res.get('chunks_processed', 0)} chunks!")
                 except Exception as e:
@@ -231,6 +257,25 @@ with st.sidebar:
                 finally:
                     if os.path.exists(tmp_path):
                         os.remove(tmp_path)
+
+    with inspect_tab:
+        if not st.session_state.indexed_docs:
+            st.info("No documents indexed yet. Upload a PDF or file to view extracted text.")
+        else:
+            doc_names = [doc["name"] for doc in st.session_state.indexed_docs]
+            selected_doc_name = st.selectbox("Select Document", options=doc_names)
+            
+            selected_doc = next((d for d in st.session_state.indexed_docs if d["name"] == selected_doc_name), None)
+            if selected_doc:
+                if selected_doc.get("chars", 0) > 0:
+                    st.markdown("🟢 **100% Extracted & Verified**")
+                else:
+                    st.markdown("🔴 **Extraction Failed (0 chars)**")
+                
+                st.caption(f"**Pages:** {selected_doc.get('pages', 0)} | **Words:** {selected_doc.get('words', 0)} | **Chunks:** {selected_doc.get('chunks', 0)} | **Chars:** {selected_doc.get('chars', 0)}")
+                
+                with st.expander("📄 View Extracted Text", expanded=False):
+                    st.text_area("Raw Text Content", value=selected_doc.get("full_text", ""), height=250, disabled=True)
 
     st.markdown("---")
     st.markdown("## ⚙️ Model & Retrieval")
@@ -254,7 +299,7 @@ with st.sidebar:
         if o_key:
             os.environ["OPENAI_API_KEY"] = o_key
 
-    top_k = st.slider("Top K Retrieved Chunks", min_value=1, max_value=8, value=3)
+    top_k = st.slider("Top K Retrieved Chunks", min_value=1, max_value=8, value=4)
 
     st.markdown("---")
     st.markdown("## 🧹 Controls")
@@ -288,13 +333,14 @@ st.markdown(
 stats = pipeline.get_stats()
 total_chunks_in_db = stats.get("total_chunks", 0)
 doc_count = len(st.session_state.indexed_docs)
+total_words_extracted = sum(d.get("words", 0) for d in st.session_state.indexed_docs)
 
 m1, m2, m3, m4 = st.columns(4)
 with m1:
     st.markdown(f"""
     <div class="metric-card">
-        <div class="metric-label">📄 Documents Indexed</div>
-        <div class="metric-value">{doc_count}</div>
+        <div class="metric-label">📄 Docs / Words Extracted</div>
+        <div class="metric-value">{doc_count} <span style="font-size:14px; color:#ABB2BF;">/ {total_words_extracted} w</span></div>
     </div>
     """, unsafe_allow_html=True)
 with m2:
@@ -346,8 +392,11 @@ for idx, msg in enumerate(st.session_state.messages):
     role = msg["role"]
     content = msg["content"]
     sources = msg.get("sources", [])
+    is_voice = msg.get("is_voice", False)
 
     with st.chat_message(role, avatar="🤖" if role == "assistant" else "👤"):
+        if role == "assistant" and is_voice:
+            st.caption("🎙️ Voice Query")
         st.markdown(content)
 
         # Bottom-left action toolbar for assistant responses (ChatGPT style)
@@ -358,11 +407,13 @@ for idx, msg in enumerate(st.session_state.messages):
                 # Speaker button on the left end
                 if st.button("🔊 Speak", key=f"btn_speak_{idx}", help="Play answer loud through speakers"):
                     st.session_state.active_audio_idx = idx
+                    st.session_state.just_activated_audio = True
 
             with act_col2:
                 if st.button("⏹️ Stop", key=f"btn_stop_{idx}", help="Stop audio playback"):
                     if st.session_state.active_audio_idx == idx:
                         st.session_state.active_audio_idx = None
+                        st.session_state.just_activated_audio = False
 
             with act_col3:
                 # Context chunks toggle
@@ -394,7 +445,9 @@ for idx, msg in enumerate(st.session_state.messages):
                 with st.spinner("🔊 Generating loud voice output..."):
                     audio_bytes = generate_speech_audio(content, volume=100, rate=voice_speed)
                     if audio_bytes:
-                        st.audio(audio_bytes, format="audio/wav", autoplay=True)
+                        should_autoplay = st.session_state.get("just_activated_audio", False)
+                        st.audio(audio_bytes, format="audio/wav", autoplay=should_autoplay)
+                        st.session_state.just_activated_audio = False
                     else:
                         st.info("💡 Windows audio speech synthesized.")
 
@@ -406,7 +459,7 @@ st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 # Right space voice recognition widget: spoken words appear immediately in the box
 v_col_left, v_col_right = st.columns([7, 3])
 with v_col_right:
-    with st.expander("🎙️ **Voice Assistant (Speak Question)**", expanded=False):
+    with st.expander("🎙️ **Voice Assistant (Speak Question)**", expanded=True):
         st.caption("Click below to dictate your question using your microphone.")
         
         # Self-contained Web Speech API component (does NOT touch window.parent)
@@ -485,19 +538,35 @@ with v_col_right:
         }
         </script>
         """, height=105)
+        
+        voice_query = st.text_input("Paste spoken text here:", key="voice_input_field", label_visibility="collapsed", placeholder="Paste spoken text here...")
+        if st.button("🚀 Ask via Voice", use_container_width=True, type="primary"):
+            if voice_query:
+                st.session_state.pending_prompt = voice_query
+                st.session_state.is_voice_query = True
 
 # -----------------------------------------------------------------------------
 # Chat Input & Assistant Response Generation
 # -----------------------------------------------------------------------------
 user_query = st.chat_input("Ask any question about your documents...")
 
+if user_query:
+    st.session_state.is_voice_query = False
+
 query_to_run = user_query or st.session_state.pending_prompt
 st.session_state.pending_prompt = None
 
 if query_to_run:
     # Append user question
-    st.session_state.messages.append({"role": "user", "content": query_to_run, "sources": []})
+    st.session_state.messages.append({
+        "role": "user",
+        "content": query_to_run,
+        "sources": [],
+        "is_voice": st.session_state.is_voice_query
+    })
     with st.chat_message("user", avatar="👤"):
+        if st.session_state.is_voice_query:
+            st.caption("🎙️ Voice Query")
         st.markdown(query_to_run)
 
     # Generate assistant answer
@@ -509,7 +578,12 @@ if query_to_run:
                 "🔹 Or click **'⚡ Load Sample Paper'** to test the pipeline with research content."
             )
             st.warning(bot_reply)
-            st.session_state.messages.append({"role": "assistant", "content": bot_reply, "sources": []})
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": bot_reply,
+                "sources": [],
+                "is_voice": st.session_state.is_voice_query
+            })
         else:
             with st.spinner("Searching documents & generating answer..."):
                 try:
@@ -530,25 +604,35 @@ if query_to_run:
                     # New message index
                     new_idx = len(st.session_state.messages)
                     
-                    # If auto-speak is enabled, trigger voice immediately
-                    if auto_speak:
+                    # If it's a voice query, trigger voice immediately
+                    if st.session_state.is_voice_query:
                         st.session_state.active_audio_idx = new_idx
+                        st.session_state.just_activated_audio = True
                         with st.spinner("🔊 Speaking answer out loud..."):
                             audio_bytes = generate_speech_audio(bot_reply, volume=100, rate=voice_speed)
                             if audio_bytes:
                                 st.audio(audio_bytes, format="audio/wav", autoplay=True)
+                                st.session_state.just_activated_audio = False
 
                     # Save to chat history
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": bot_reply,
-                        "sources": retrieved_chunks
+                        "sources": retrieved_chunks,
+                        "is_voice": st.session_state.is_voice_query
                     })
+                    
+                    st.session_state.is_voice_query = False
 
                 except Exception as e:
                     err_msg = f"❌ Error while generating answer: {e}"
                     st.error(err_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": err_msg, "sources": []})
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": err_msg,
+                        "sources": [],
+                        "is_voice": st.session_state.is_voice_query
+                    })
 
 # -----------------------------------------------------------------------------
 # Bottom Utilities: Export Conversation

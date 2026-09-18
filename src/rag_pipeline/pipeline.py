@@ -86,12 +86,29 @@ class RAGPipeline:
         logger.info(f"Step 3: Storing {len(all_chunks)} chunks in ChromaDB with embeddings")
         self.vector_store.add_chunks(all_chunks)
 
+        full_text = "\n\n".join(sec["text"] for sec in sections).strip()
+        words = len(full_text.split())
+        chars = len(full_text)
+        preview = full_text[:500] + "..." if len(full_text) > 500 else full_text
+
         file_stat = {
             "filename": filename,
             "path": file_path,
+            "file_type": os.path.splitext(filename)[1].lower(),
             "sections_processed": len(sections),
+            "pages_processed": len(sections),
+            "pages_count": len(sections),
             "chunks_processed": len(all_chunks),
-            "file_type": os.path.splitext(filename)[1].lower()
+            "chunks_count": len(all_chunks),
+            "total_words": words,
+            "words": words,
+            "total_chars": chars,
+            "chars": chars,
+            "characters": chars,
+            "total_characters": chars,
+            "text_preview": preview,
+            "preview": preview,
+            "full_text": full_text
         }
         self.indexed_files.append(file_stat)
 
@@ -99,8 +116,20 @@ class RAGPipeline:
             "status": "success",
             "file_path": file_path,
             "filename": filename,
+            "file_type": os.path.splitext(filename)[1].lower(),
             "pages_processed": len(sections),
-            "chunks_processed": len(all_chunks)
+            "pages_count": len(sections),
+            "chunks_processed": len(all_chunks),
+            "chunks_count": len(all_chunks),
+            "words": words,
+            "total_words": words,
+            "chars": chars,
+            "total_chars": chars,
+            "characters": chars,
+            "total_characters": chars,
+            "preview": preview,
+            "text_preview": preview,
+            "full_text": full_text
         }
 
     def ingest_multiple(

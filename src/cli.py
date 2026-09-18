@@ -28,7 +28,7 @@ Examples:
 """)
     parser.add_argument("--pdf", type=str, help="Path to PDF file to ingest")
     parser.add_argument("--query", type=str, help="Query to ask the RAG pipeline")
-    parser.add_argument("--top-k", type=int, default=3, help="Number of chunks to retrieve")
+    parser.add_argument("--top-k", type=int, default=4, help="Number of chunks to retrieve")
     parser.add_argument("--interactive", action="store_true", help="Start interactive query loop")
     parser.add_argument("--generator", type=str, choices=["local", "gemini", "openai", "fallback"], default="local", help="Generator model type")
     
@@ -47,7 +47,7 @@ Examples:
     if args.pdf:
         print(f"\033[93mIngesting PDF: {args.pdf}...\033[0m")
         try:
-            status = pipeline.ingest(file_path=args.pdf, chunk_size=500, chunk_overlap=50)
+            status = pipeline.ingest(file_path=args.pdf, chunk_size=1000, chunk_overlap=150)
             print(f"\033[92mSuccess: Ingested {status.get('chunks_processed', 0)} chunks.\033[0m")
         except Exception as e:
             print(f"\033[91mError ingesting PDF: {e}\033[0m")
@@ -64,7 +64,7 @@ Examples:
                 pdf_to_ingest = pdf_input or default_pdf
                 if os.path.exists(pdf_to_ingest):
                     print(f"\033[93mIngesting PDF: {pdf_to_ingest}...\033[0m")
-                    status = pipeline.ingest(file_path=pdf_to_ingest, chunk_size=500, chunk_overlap=50)
+                    status = pipeline.ingest(file_path=pdf_to_ingest, chunk_size=1000, chunk_overlap=150)
                     print(f"\033[92mSuccess: Ingested {status.get('chunks_processed', 0)} chunks.\033[0m")
                 else:
                     print(f"\033[91mWarning: File not found at '{pdf_to_ingest}'. You can ingest later using --pdf.\033[0m")

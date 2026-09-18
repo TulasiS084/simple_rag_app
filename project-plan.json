@@ -318,6 +318,90 @@
         "Ready-to-run batch scripts for Windows",
         "release-report.json confirming release readiness"
       ]
+    },
+    {
+      "taskId": "TASK-010",
+      "parentTaskId": null,
+      "owner": "backend-lead",
+      "goal": "Refactor chunker and generator to provide 100% document-aligned, accurate answers without hallucination or nonsense",
+      "status": "done",
+      "inputs": [
+        "User feedback: answers were not properly aligned with uploaded document and gave nonsense keyword fragments",
+        "src/rag_pipeline/generator.py",
+        "src/rag_pipeline/chunker.py"
+      ],
+      "outputs": [
+        "src/rag_pipeline/generator.py",
+        "src/rag_pipeline/chunker.py",
+        "src/rag_pipeline/config.py"
+      ],
+      "dependencies": [],
+      "filesOrAreaOwned": [
+        "src/rag_pipeline/generator.py",
+        "src/rag_pipeline/chunker.py",
+        "src/rag_pipeline/config.py",
+        "tests/test_generator.py"
+      ],
+      "acceptanceCriteria": [
+        "Chunker respects paragraph and sentence boundaries with sensible default size (1000 chars, 150 overlap)",
+        "Generator extracts coherent, grounded answers directly from the top-k retrieved chunks",
+        "Clear distinction between direct answer, supporting bullet points, and key takeaway without sentence repetition",
+        "Polite fallback if the question topic is absent from the document"
+      ]
+    },
+    {
+      "taskId": "TASK-011",
+      "parentTaskId": null,
+      "owner": "frontend-lead",
+      "goal": "Update Streamlit UI so voice assistant only plays audio when the question is asked via microphone, with silent text responses by default",
+      "status": "done",
+      "inputs": [
+        "User feedback: do not want loud voice every time, only when speaking the question, with right-side voice assistant icon",
+        "src/app_streamlit.py"
+      ],
+      "outputs": [
+        "src/app_streamlit.py"
+      ],
+      "dependencies": [],
+      "filesOrAreaOwned": [
+        "src/app_streamlit.py"
+      ],
+      "acceptanceCriteria": [
+        "Text queries submitted via chat input generate silent text responses (no audio autoplay)",
+        "Voice Assistant card/icon allows user to speak their question",
+        "When question is submitted via Voice Assistant, assistant automatically reads answer aloud through speakers",
+        "Speaker button (🔊 Speak) remains on each assistant message for on-demand playback"
+      ]
+    },
+    {
+      "taskId": "TASK-012",
+      "parentTaskId": null,
+      "owner": "qa-lead",
+      "goal": "Verify updated RAG pipeline accuracy, test suite execution, and Streamlit voice integration",
+      "status": "done",
+      "inputs": [
+        "src/rag_pipeline/",
+        "src/app_streamlit.py",
+        "tests/"
+      ],
+      "outputs": [
+        "tests/run_all_tests.py",
+        "qa-report.json"
+      ],
+      "dependencies": [
+        "TASK-010",
+        "TASK-011"
+      ],
+      "filesOrAreaOwned": [
+        "tests/",
+        "qa-report.json"
+      ],
+      "acceptanceCriteria": [
+        "All unit and integration tests pass",
+        "RAG pipeline produces factually accurate answers from sample paper",
+        "No audio autoplay for typed queries"
+      ]
     }
   ]
 }
+
